@@ -5,3 +5,4 @@ __pycache__
 example.sh
 .env
 token.json
+client_secrets.json

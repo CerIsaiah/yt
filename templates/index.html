@@ -35,13 +35,14 @@
         <h2 class="text-6xl font-bold text-center text-primary mb-4">Advertise with our Free AI Youtube Commentor! </h2>
         <h3 class="text-4xl font-bold text-center text-gray-900 mb-8">To Comment on Videos in Your Niche</h4>
         
-        <div class="mb-8">
-            <div class="flex max-w-2xl mx-auto">
-                <input type="text" id="searchQuery" placeholder="Videos you want to comment on" class="flex-grow px-4 py-3 rounded-l-lg border-2 border-primary focus:outline-none focus:border-secondary text-lg">
-                <button onclick="search()" class="bg-primary text-white px-8 py-3 rounded-r-lg hover:bg-secondary transition duration-300 text-lg font-semibold">Search</button>
+            <div class="mb-8">
+                <div class="flex max-w-2xl mx-auto">
+                    <input type="text" id="searchQuery" placeholder="Videos you want to comment on" class="flex-grow px-4 py-3 rounded-l-lg border-2 border-primary focus:outline-none focus:border-secondary text-lg">
+                    <button onclick="initiateSearch()" class="bg-primary text-white px-8 py-3 rounded-r-lg hover:bg-secondary transition duration-300 text-lg font-semibold">Search</button>
+                </div>
+                <p id="searchError" class="mt-2 text-red-500 hidden"></p>
             </div>
-            <p id="searchError" class="mt-2 text-red-500 hidden"></p>
-        </div>
+    
 
         <h2 class="text-3xl font-bold text-center text-gray-900 mb-8">How It Works</h2>
         <div class="grid grid-cols-1 md:grid-cols-3 gap-8 mb-12">
@@ -193,38 +194,41 @@
                 });
             }
 
-            window.search = function() {
-    const searchQueryInput = document.getElementById('searchQuery');
-    const resultsDiv = document.getElementById('results');
-    if (!searchQueryInput || !resultsDiv) {
-        console.error('Search query input or results div not found');
-        return;
-    }
-    const query = searchQueryInput.value;
-    resultsDiv.innerHTML = '<div class="col-span-full text-center text-gray-500 pulse">Searching...</div>';
-    hideError('searchError');
-    
-    axios.post('/search', `query=${encodeURIComponent(query)}`, {
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
-    })
-    .then(function (response) {
-        if (response.data.items && Array.isArray(response.data.items)) {
-            displayResults(response.data.items);
-        } else {
-            showError('searchError', 'No results found or unexpected response format.');
-            resultsDiv.innerHTML = '';
-        }
-    })
-    .catch(function (error) {
-        console.error('Error:', error);
-        resultsDiv.innerHTML = '';
-        if (error.response) {
-            showError('searchError', error.response.data.error || 'An error occurred while searching. Please try again.');
-        } else {
-            showError('searchError', 'An error occurred while searching. Please try again.');
-        }
-    });
-}
+            window.initiateSearch = function() {
+                const searchQueryInput = document.getElementById('searchQuery');
+                const resultsDiv = document.getElementById('results');
+                if (!searchQueryInput || !resultsDiv) {
+                    console.error('Search query input or results div not found');
+                    return;
+                }
+                const query = searchQueryInput.value;
+                resultsDiv.innerHTML = '<div class="col-span-full text-center text-gray-500 pulse">Initiating search...</div>';
+                hideError('searchError');
+                
+                axios.post('/search', `query=${encodeURIComponent(query)}`, {
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
+                })
+                .then(function (response) {
+                    if (response.data.items && Array.isArray(response.data.items)) {
+                        displayResults(response.data.items);
+                    } else {
+                        showError('searchError', 'No results found or unexpected response format.');
+                        resultsDiv.innerHTML = '';
+                    }
+                })
+                .catch(function (error) {
+                    console.error('Error:', error);
+                    resultsDiv.innerHTML = '';
+                    if (error.response && error.response.status === 401) {
+                        // Redirect to authorization if unauthorized
+                        window.location.href = '/authorize';
+                    } else if (error.response) {
+                        showError('searchError', error.response.data.error || 'An error occurred while searching. Please try again.');
+                    } else {
+                        showError('searchError', 'An error occurred while searching. Please try again.');
+                    }
+                });
+            }
 
 function displayResults(items) {
     const resultsDiv = document.getElementById('results');

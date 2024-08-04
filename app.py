@@ -1,8 +1,9 @@
-from flask import Flask, render_template, request, jsonify, session
+from flask import Flask, render_template, request, jsonify, session, redirect, url_for
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 from googleapiclient.discovery import build
 from google.oauth2.credentials import Credentials
+from google_auth_oauthlib.flow import Flow
 from googleapiclient.errors import HttpError
 import os
 import json
@@ -25,23 +26,34 @@ limiter = Limiter(
 )
 
 COMMENTS_FILE = "user_comments.json"
-TOKEN_PATH = "token.json"
+
+
+CLIENT_CONFIG = {
+    "web": {
+        "client_id": os.getenv('GOOGLE_CLIENT_ID'),
+        "project_id": os.getenv('GOOGLE_PROJECT_ID'),
+        "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+        "token_uri": "https://oauth2.googleapis.com/token",
+        "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+        "client_secret": os.getenv('GOOGLE_CLIENT_SECRET'),
+        "redirect_uris": ["http://localhost:8000/","http://localhost:0/","http://localhost:5000/oauth2callback","http://127.0.0.1:5000/search","http://127.0.0.1:5000/","http://127.0.0.1:5000/oauth2callback"]
+    }
+}
+
+
+
+# OAuth 2.0 configuration
+CLIENT_SECRETS_FILE = "client_secrets.json"
+SCOPES = ["https://www.googleapis.com/auth/youtube.force-ssl", "https://www.googleapis.com/auth/youtube.readonly", "https://www.googleapis.com/auth/youtube"]
+API_SERVICE_NAME = "youtube"
+API_VERSION = "v3"
 
 class YoutubeApi:
-    scopes = ["https://www.googleapis.com/auth/youtube.force-ssl"]
-    api_service = "youtube"
-    api_version = "v3"
+    def __init__(self, credentials):
+        self.connection = self.init_connection(credentials)
 
-    def __init__(self):
-        self.connection = self.init_connection()
-
-    def init_connection(self):
-        token = os.getenv('YOUTUBE_API_TOKEN')
-        if not token:
-            raise ValueError("YOUTUBE_API_TOKEN not found in environment variables")
-        
-        credentials = Credentials.from_authorized_user_info(json.loads(token), self.scopes)
-        return build(self.api_service, self.api_version, credentials=credentials)
+    def init_connection(self, credentials):
+        return build(API_SERVICE_NAME, API_VERSION, credentials=credentials)
 
     def make_search(self, query, max_results=10):
         try:
@@ -75,8 +87,6 @@ class YoutubeApi:
             print(f"An error occurred: {e}")
             return False
 
-youtube_api = YoutubeApi()
-
 def load_user_comments(user_id):
     if os.path.exists(COMMENTS_FILE):
         with open(COMMENTS_FILE, 'r') as file:
@@ -99,9 +109,59 @@ def before_request():
     if 'user_id' not in session:
         session['user_id'] = str(random.randint(1000000, 9999999))
 
+def credentials_to_dict(credentials):
+    return {
+        'token': credentials.token,
+        'refresh_token': credentials.refresh_token,
+        'token_uri': credentials.token_uri,
+        'client_id': credentials.client_id,
+        'client_secret': credentials.client_secret,
+        'scopes': credentials.scopes
+    }
+
 @app.route('/')
 def index():
     return render_template('index.html')
+
+# Update the authorize and oauth2callback functions
+@app.route('/authorize')
+def authorize():
+    flow = Flow.from_client_config(
+        CLIENT_CONFIG,
+        scopes=SCOPES,
+        redirect_uri=url_for('oauth2callback', _external=True)
+    )
+    authorization_url, state = flow.authorization_url(
+        access_type='offline',
+        include_granted_scopes='true'
+    )
+    session['state'] = state
+    return redirect(authorization_url)
+
+@app.route('/oauth2callback')
+def oauth2callback():
+    flow = Flow.from_client_config(
+        CLIENT_CONFIG,
+        scopes=SCOPES,
+        state=session['state'],
+        redirect_uri=url_for('oauth2callback', _external=True)
+    )
+    flow.fetch_token(authorization_response=request.url)
+    credentials = flow.credentials
+    session['credentials'] = credentials_to_dict(credentials)
+    return redirect(url_for('index'))
+
+@app.route('/clear')
+def clear_credentials():
+    if 'credentials' in session:
+        del session['credentials']
+    return redirect(url_for('index'))
+
+def get_youtube_api():
+    if 'credentials' not in session:
+        return None
+    credentials = Credentials(**session['credentials'])
+    return YoutubeApi(credentials)
 
 @app.route('/get_comments', methods=['GET'])
 def get_comments():
@@ -150,6 +210,10 @@ def remove_comment():
 @app.route('/search', methods=['POST'])
 @limiter.limit("5 per minute")
 def search():
+    youtube_api = get_youtube_api()
+    if not youtube_api:
+        return jsonify({'error': 'Not authenticated. Please authorize first.'}), 401
+
     query = request.form.get('query')
     if not query:
         return jsonify({'error': 'No query provided'}), 400
@@ -163,6 +227,10 @@ def search():
 @app.route('/comment', methods=['POST'])
 @limiter.limit("7 per minute")
 def comment():
+    youtube_api = get_youtube_api()
+    if not youtube_api:
+        return jsonify({'error': 'Not authenticated. Please authorize first.'}), 401
+
     user_id = session.get('user_id')
     if not user_id:
         return jsonify({'error': 'User not authenticated'}), 401
@@ -176,13 +244,16 @@ def comment():
         return jsonify({'error': 'No comments available'}), 400
     
     random_comment = random.choice(user_comments)
-    success = youtube_api.add_comment(video_id, random_comment)
+    try:
+        success = youtube_api.add_comment(video_id, random_comment)
+        if success:
+            return jsonify({'status': 'success', 'comment': random_comment})
+        else:
+            return jsonify({'error': 'Unable to post comment. Please check video permissions.'}), 403
+    except HttpError as e:
+        error_message = e.error_details[0]['message'] if e.error_details else str(e)
+        return jsonify({'error': f'YouTube API error: {error_message}'}), e.resp.status
     
-    if success:
-        return jsonify({'status': 'success', 'comment': random_comment})
-    else:
-        return jsonify({'error': 'Cannot add comment on disabled comment sections or livestream videos'}), 500
-
 @app.errorhandler(429)
 def ratelimit_handler(e):
     return jsonify({'error': 'Rate limit exceeded'}), 429
@@ -192,8 +263,5 @@ def privacy_policy():
     return render_template('privacy_policy.html')
 
 if __name__ == '__main__':
+    os.environ['OAUTHLIB_INSECURE_TRANSPORT'] = '1'
     app.run(debug=True)
-
-@app.route('/privacy-policy')
-def privacy_policy():
-    return render_template('privacy_policy.html')
