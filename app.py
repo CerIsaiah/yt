@@ -27,21 +27,43 @@ limiter = Limiter(
 COMMENTS_FILE = "user_comments.json"
 TOKEN_PATH = "token.json"
 
+from google.oauth2.credentials import Credentials
+from google.oauth2 import service_account
+from googleapiclient.discovery import build
+from google.auth.transport.requests import Request
+from google_auth_oauthlib.flow import InstalledAppFlow
+import os
+import json
+
 class YoutubeApi:
-    scopes = ["https://www.googleapis.com/auth/youtube.force-ssl"]
-    api_service = "youtube"
-    api_version = "v3"
+    SCOPES = ['https://www.googleapis.com/auth/youtube.force-ssl']
+    API_SERVICE_NAME = 'youtube'
+    API_VERSION = 'v3'
 
     def __init__(self):
         self.connection = self.init_connection()
 
     def init_connection(self):
-        token = os.getenv('YOUTUBE_API_TOKEN')
-        if not token:
-            raise ValueError("YOUTUBE_API_TOKEN not found in environment variables")
+        creds = None
+        # The file token.json stores the user's access and refresh tokens, and is
+        # created automatically when the authorization flow completes for the first time.
+        if os.path.exists('token.json'):
+            creds = Credentials.from_authorized_user_file('token.json', self.SCOPES)
         
-        credentials = Credentials.from_authorized_user_info(json.loads(token), self.scopes)
-        return build(self.api_service, self.api_version, credentials=credentials)
+        # If there are no (valid) credentials available, let the user log in.
+        if not creds or not creds.valid:
+            if creds and creds.expired and creds.refresh_token:
+                creds.refresh(Request())
+            else:
+                flow = InstalledAppFlow.from_client_secrets_file(
+                    'client_secret.json', self.SCOPES)
+                creds = flow.run_local_server(port=0)
+            # Save the credentials for the next run
+            with open('token.json', 'w') as token:
+                token.write(creds.to_json())
+
+        # Build the service object
+        return build(self.API_SERVICE_NAME, self.API_VERSION, credentials=creds)
 
     def make_search(self, query, max_results=10):
         try:
@@ -51,7 +73,7 @@ class YoutubeApi:
                 part="snippet",
                 type="video"
             ).execute()
-        except HttpError as e:
+        except Exception as e:
             print(f"An error occurred: {e}")
             return None
 
@@ -71,7 +93,7 @@ class YoutubeApi:
                 }
             ).execute()
             return True
-        except HttpError as e:
+        except Exception as e:
             print(f"An error occurred: {e}")
             return False
 
@@ -181,7 +203,7 @@ def comment():
     if success:
         return jsonify({'status': 'success', 'comment': random_comment})
     else:
-        return jsonify({'error': 'Failed to add comment'}), 500
+        return jsonify({'error': 'Cannot add comment on disabled comment sections or livestream videos'}), 500
 
 @app.errorhandler(429)
 def ratelimit_handler(e):
