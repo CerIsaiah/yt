@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>YouTube Comment Bot</title>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#1E40AF',
+                        secondary: '#3B82F6',
+                        accent: '#60A5FA',
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: .5; }
+        }
+        .pulse {
+            animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 min-h-screen">
+    <div class="container mx-auto px-4 py-8">
+        <h1 class="text-6xl font-bold text-center text-primary mb-12">YouTube Comment Bot</h1>
+        
+        <div class="mb-8">
+            <div class="flex">
+                <input type="text" id="searchQuery" placeholder="Search for YouTube videos" class="flex-grow px-4 py-3 rounded-l-lg border-2 border-secondary focus:outline-none focus:border-primary text-lg">
+                <button onclick="search()" class="bg-secondary text-white px-8 py-3 rounded-r-lg hover:bg-primary transition duration-300 text-lg font-semibold">Search</button>
+            </div>
+            <p id="searchError" class="mt-2 text-red-500 hidden"></p>
+        </div>
+
+        <div class="bg-white rounded-lg shadow-lg p-6 mb-8">
+            <h2 class="text-2xl font-semibold text-primary mb-4">Your Comments</h2>
+            <ul id="commentList" class="space-y-2 mb-4"></ul>
+            <div class="flex">
+                <input type="text" id="newComment" placeholder="Add a new comment" class="flex-grow px-4 py-2 rounded-l-lg border-2 border-accent focus:outline-none focus:border-secondary">
+                <button onclick="addCustomComment()" class="bg-accent text-white px-6 py-2 rounded-r-lg hover:bg-secondary transition duration-300 font-semibold">Add</button>
+            </div>
+        </div>
+
+        <div class="bg-white rounded-lg shadow-lg p-6 mb-8">
+            <h2 class="text-2xl font-semibold text-primary mb-4">How It Works</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div class="bg-blue-50 p-4 rounded-lg">
+                    <div class="text-3xl font-bold text-secondary mb-2">1</div>
+                    <p>Add your custom comments to the list above</p>
+                </div>
+                <div class="bg-blue-50 p-4 rounded-lg">
+                    <div class="text-3xl font-bold text-secondary mb-2">2</div>
+                    <p>Search for YouTube videos using the search box</p>
+                </div>
+                <div class="bg-blue-50 p-4 rounded-lg">
+                    <div class="text-3xl font-bold text-secondary mb-2">3</div>
+                    <p>Click "Add Random Comment" on any video in the results</p>
+                </div>
+                <div class="bg-blue-50 p-4 rounded-lg">
+                    <div class="text-3xl font-bold text-secondary mb-2">4</div>
+                    <p>A random comment from your list will be posted to the video</p>
+                </div>
+            </div>
+        </div>
+
+        <div id="results" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8"></div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            function showError(elementId, message) {
+                const errorElement = document.getElementById(elementId);
+                if (errorElement) {
+                    errorElement.textContent = message;
+                    errorElement.classList.remove('hidden');
+                }
+            }
+
+            function hideError(elementId) {
+                const errorElement = document.getElementById(elementId);
+                if (errorElement) {
+                    errorElement.classList.add('hidden');
+                }
+            }
+
+            function loadComments() {
+                axios.get('/get_comments')
+                    .then(function (response) {
+                        const commentList = document.getElementById('commentList');
+                        if (!commentList) {
+                            console.error('Comment list element not found');
+                            return;
+                        }
+                        commentList.innerHTML = '';
+                        response.data.comments.forEach(comment => {
+                            addCommentToList(comment);
+                        });
+                    })
+                    .catch(function (error) {
+                        console.error('Error loading comments:', error);
+                    });
+            }
+
+            function addCommentToList(comment) {
+                const commentList = document.getElementById('commentList');
+                if (!commentList) {
+                    console.error('Comment list element not found');
+                    return;
+                }
+                const li = document.createElement('li');
+                li.className = 'flex items-center justify-between bg-blue-50 p-2 rounded';
+                li.innerHTML = `
+                    <span class="text-gray-800">"${comment}"</span>
+                    <button onclick="removeComment('${comment.replace(/'/g, "\\'")}')" class="text-red-500 hover:text-red-700 ml-2">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                            <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd" />
+                        </svg>
+                    </button>
+                `;
+                commentList.appendChild(li);
+            }
+
+            window.removeComment = function(comment) {
+                axios.post('/remove_comment', `comment=${encodeURIComponent(comment)}`, {
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
+                })
+                .then(function (response) {
+                    if (response.data.status === 'success') {
+                        loadComments();
+                    } else {
+                        console.error('Unexpected response:', response.data);
+                        alert('An unexpected error occurred. Please try again.');
+                    }
+                })
+                .catch(function (error) {
+                    console.error('Error:', error);
+                    if (error.response) {
+                        alert(`Error removing comment: ${error.response.data.error || 'Please try again.'}`);
+                    } else {
+                        alert('Error removing comment. Please try again.');
+                    }
+                });
+            }
+
+            window.addCustomComment = function() {
+                const newCommentInput = document.getElementById('newComment');
+                if (!newCommentInput) {
+                    console.error('New comment input not found');
+                    return;
+                }
+                const newComment = newCommentInput.value;
+                if (!newComment.trim()) {
+                    alert('Please enter a comment');
+                    return;
+                }
+                axios.post('/add_comment', `new_comment=${encodeURIComponent(newComment)}`, {
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
+                })
+                .then(function (response) {
+                    if (response.data.status === 'success') {
+                        newCommentInput.value = '';
+                        loadComments();
+                    }
+                })
+                .catch(function (error) {
+                    console.error('Error:', error);
+                    alert('Error adding comment. Please try again.');
+                });
+            }
+
+            window.search = function() {
+                const searchQueryInput = document.getElementById('searchQuery');
+                const resultsDiv = document.getElementById('results');
+                if (!searchQueryInput || !resultsDiv) {
+                    console.error('Search query input or results div not found');
+                    return;
+                }
+                const query = searchQueryInput.value;
+                resultsDiv.innerHTML = '<div class="col-span-full text-center text-gray-500 pulse">Searching...</div>';
+                hideError('searchError');
+                
+                axios.post('/search', `query=${encodeURIComponent(query)}`, {
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
+                })
+                .then(function (response) {
+                    displayResults(response.data.items);
+                })
+                .catch(function (error) {
+                    console.error('Error:', error);
+                    resultsDiv.innerHTML = '';
+                    if (error.response) {
+                        showError('searchError', error.response.data.error || 'An error occurred while searching. Please try again.');
+                    } else {
+                        showError('searchError', 'An error occurred while searching. Please try again.');
+                    }
+                });
+            }
+
+            function displayResults(items) {
+                const resultsDiv = document.getElementById('results');
+                if (!resultsDiv) {
+                    console.error('Results div not found');
+                    return;
+                }
+                resultsDiv.innerHTML = '';
+                items.forEach(item => {
+                    const videoDiv = document.createElement('div');
+                    videoDiv.className = 'bg-white rounded-lg shadow-md overflow-hidden';
+                    videoDiv.innerHTML = `
+                        <a href="https://www.youtube.com/watch?v=${item.id.videoId}" target="_blank" rel="noopener noreferrer">
+                            <img src="${item.snippet.thumbnails.medium.url}" alt="${item.snippet.title}" class="w-full h-48 object-cover">
+                        </a>
+                        <div class="p-4">
+                            <h3 class="text-lg font-semibold text-gray-800 mb-2">
+                                <a href="https://www.youtube.com/watch?v=${item.id.videoId}" target="_blank" rel="noopener noreferrer" class="hover:text-blue-600">
+                                    ${item.snippet.title}
+                                </a>
+                            </h3>
+                            <p class="text-gray-600 text-sm mb-4">${item.snippet.description}</p>
+                            <button onclick="addComment('${item.id.videoId}')" class="bg-secondary text-white px-4 py-2 rounded hover:bg-primary transition duration-300">Add Random Comment</button>
+                            <p id="comment-status-${item.id.videoId}" class="mt-2 text-sm text-gray-500"></p>
+                        </div>
+                    `;
+                    resultsDiv.appendChild(videoDiv);
+                });
+            }
+
+            window.addComment = function(videoId) {
+                const statusElement = document.getElementById(`comment-status-${videoId}`);
+                if (!statusElement) {
+                    console.error(`Comment status element not found for video ${videoId}`);
+                    return;
+                }
+                statusElement.textContent = 'Adding comment...';
+                statusElement.className = 'mt-2 text-sm text-blue-500 pulse';
+                
+                axios.post('/comment', `video_id=${videoId}`, {
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
+                })
+                .then(function (response) {
+                    if (response.data.status === 'success') {
+                        statusElement.textContent = `Comment added: "${response.data.comment}"`;
+                        statusElement.className = 'mt-2 text-sm text-green-500';
+                    }
+                })
+                .catch(function (error) {
+                    console.error('Error:', error);
+                    if (error.response && error.response.status === 429) {
+                        statusElement.textContent = 'Rate limit exceeded. Please try again later.';
+                    } else if (error.response) {
+                        statusElement.textContent = error.response.data.error || 'Error adding comment. Please try again.';
+                    } else {
+                        statusElement.textContent = 'Error adding comment. Please try again.';
+                    }
+                    statusElement.className = 'mt-2 text-sm text-red-500';
+                });
+            }
+
+            // Load comments when the page loads
+            loadComments();
+        });
+    </script>
+</body>
+</html>
