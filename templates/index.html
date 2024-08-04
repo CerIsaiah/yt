@@ -84,6 +84,11 @@
         </div>
 
         <div id="results" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8"></div>
+        <footer class="mt-12 py-4 bg-gray-200">
+            <div class="container mx-auto px-4 text-center">
+                <a href="{{ url_for('privacy_policy') }}" class="text-blue-500 hover:underline text-center">Privacy Policy</a>
+            </div>
+        </footer>
     </div>
 
     <script>
@@ -189,40 +194,49 @@
             }
 
             window.search = function() {
-                const searchQueryInput = document.getElementById('searchQuery');
-                const resultsDiv = document.getElementById('results');
-                if (!searchQueryInput || !resultsDiv) {
-                    console.error('Search query input or results div not found');
-                    return;
-                }
-                const query = searchQueryInput.value;
-                resultsDiv.innerHTML = '<div class="col-span-full text-center text-gray-500 pulse">Searching...</div>';
-                hideError('searchError');
-                
-                axios.post('/search', `query=${encodeURIComponent(query)}`, {
-                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
-                })
-                .then(function (response) {
-                    displayResults(response.data.items);
-                })
-                .catch(function (error) {
-                    console.error('Error:', error);
-                    resultsDiv.innerHTML = '';
-                    if (error.response) {
-                        showError('searchError', error.response.data.error || 'An error occurred while searching. Please try again.');
-                    } else {
-                        showError('searchError', 'An error occurred while searching. Please try again.');
-                    }
-                });
-            }
+    const searchQueryInput = document.getElementById('searchQuery');
+    const resultsDiv = document.getElementById('results');
+    if (!searchQueryInput || !resultsDiv) {
+        console.error('Search query input or results div not found');
+        return;
+    }
+    const query = searchQueryInput.value;
+    resultsDiv.innerHTML = '<div class="col-span-full text-center text-gray-500 pulse">Searching...</div>';
+    hideError('searchError');
+    
+    axios.post('/search', `query=${encodeURIComponent(query)}`, {
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
+    })
+    .then(function (response) {
+        if (response.data.items && Array.isArray(response.data.items)) {
+            displayResults(response.data.items);
+        } else {
+            showError('searchError', 'No results found or unexpected response format.');
+            resultsDiv.innerHTML = '';
+        }
+    })
+    .catch(function (error) {
+        console.error('Error:', error);
+        resultsDiv.innerHTML = '';
+        if (error.response) {
+            showError('searchError', error.response.data.error || 'An error occurred while searching. Please try again.');
+        } else {
+            showError('searchError', 'An error occurred while searching. Please try again.');
+        }
+    });
+}
 
-            function displayResults(items) {
-                const resultsDiv = document.getElementById('results');
-                if (!resultsDiv) {
-                    console.error('Results div not found');
-                    return;
-                }
-                resultsDiv.innerHTML = '';
+function displayResults(items) {
+    const resultsDiv = document.getElementById('results');
+    if (!resultsDiv) {
+        console.error('Results div not found');
+        return;
+    }
+    resultsDiv.innerHTML = '';
+    if (items.length === 0) {
+        resultsDiv.innerHTML = '<div class="col-span-full text-center text-gray-500">No results found.</div>';
+        return;
+    }
                 items.forEach(item => {
                     const videoDiv = document.createElement('div');
                     videoDiv.className = 'bg-white rounded-lg shadow-md overflow-hidden';
@@ -255,15 +269,14 @@
                 statusElement.className = 'mt-2 text-sm text-blue-500 pulse';
                 
                 axios.post('/comment', `video_id=${videoId}`, {
-                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
-                })
-                .then(function (response) {
-                    if (response.data.status === 'success') {
-                        statusElement.textContent = `Comment added: "${response.data.comment}"`;
-                        statusElement.className = 'mt-2 text-sm text-green-500';
-                    }
-                })
-                .catch(function (error) {
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
+    })
+    .then(function (response) {
+        if (response.data.status === 'success') {
+            statusElement.textContent = `Comment added: "${response.data.comment}"`;
+            statusElement.className = 'mt-2 text-sm text-green-500';
+        }
+    }).catch(function (error) {
                     console.error('Error:', error);
                     if (error.response && error.response.status === 429) {
                         statusElement.textContent = 'Rate limit exceeded. Please try again later.';

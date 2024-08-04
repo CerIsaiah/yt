@@ -1,10 +1,9 @@
-from flask import Flask, render_template, request, jsonify, session, redirect, url_for
+from flask import Flask, render_template, request, jsonify, session
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 from googleapiclient.discovery import build
 from google.oauth2.credentials import Credentials
 from googleapiclient.errors import HttpError
-from google_auth_oauthlib.flow import Flow
 import os
 import json
 import random
@@ -26,20 +25,27 @@ limiter = Limiter(
 )
 
 COMMENTS_FILE = "user_comments.json"
-CLIENT_SECRETS_FILE = "client_secret.json"  # Download this from Google Developers Console
-SCOPES = ['https://www.googleapis.com/auth/youtube.force-ssl']
+TOKEN_PATH = "token.json"
 
 class YoutubeApi:
-    @staticmethod
-    def get_authenticated_service():
-        credentials = Credentials(**session['credentials'])
-        return build('youtube', 'v3', credentials=credentials)
+    scopes = ["https://www.googleapis.com/auth/youtube.force-ssl"]
+    api_service = "youtube"
+    api_version = "v3"
 
-    @staticmethod
-    def make_search(query, max_results=10):
-        youtube = YoutubeApi.get_authenticated_service()
+    def __init__(self):
+        self.connection = self.init_connection()
+
+    def init_connection(self):
+        token = os.getenv('YOUTUBE_API_TOKEN')
+        if not token:
+            raise ValueError("YOUTUBE_API_TOKEN not found in environment variables")
+        
+        credentials = Credentials.from_authorized_user_info(json.loads(token), self.scopes)
+        return build(self.api_service, self.api_version, credentials=credentials)
+
+    def make_search(self, query, max_results=10):
         try:
-            return youtube.search().list(
+            return self.connection.search().list(
                 q=query,
                 maxResults=max_results,
                 part="snippet",
@@ -49,11 +55,9 @@ class YoutubeApi:
             print(f"An error occurred: {e}")
             return None
 
-    @staticmethod
-    def add_comment(video_id, comment):
-        youtube = YoutubeApi.get_authenticated_service()
+    def add_comment(self, video_id, comment):
         try:
-            youtube.commentThreads().insert(
+            self.connection.commentThreads().insert(
                 part="snippet",
                 body={
                     "snippet": {
@@ -70,6 +74,8 @@ class YoutubeApi:
         except HttpError as e:
             print(f"An error occurred: {e}")
             return False
+
+youtube_api = YoutubeApi()
 
 def load_user_comments(user_id):
     if os.path.exists(COMMENTS_FILE):
@@ -96,41 +102,6 @@ def before_request():
 @app.route('/')
 def index():
     return render_template('index.html')
-
-@app.route('/authorize')
-def authorize():
-    flow = Flow.from_client_secrets_file(
-        CLIENT_SECRETS_FILE,
-        scopes=SCOPES)
-    flow.redirect_uri = url_for('oauth2callback', _external=True)
-    authorization_url, state = flow.authorization_url(
-        access_type='offline',
-        include_granted_scopes='true')
-    session['state'] = state
-    return redirect(authorization_url)
-
-@app.route('/oauth2callback')
-def oauth2callback():
-    state = session['state']
-    flow = Flow.from_client_secrets_file(
-        CLIENT_SECRETS_FILE,
-        scopes=SCOPES,
-        state=state)
-    flow.redirect_uri = url_for('oauth2callback', _external=True)
-
-    authorization_response = request.url
-    flow.fetch_token(authorization_response=authorization_response)
-
-    credentials = flow.credentials
-    session['credentials'] = {
-        'token': credentials.token,
-        'refresh_token': credentials.refresh_token,
-        'token_uri': credentials.token_uri,
-        'client_id': credentials.client_id,
-        'client_secret': credentials.client_secret,
-        'scopes': credentials.scopes
-    }
-    return redirect(url_for('index'))
 
 @app.route('/get_comments', methods=['GET'])
 def get_comments():
@@ -179,14 +150,11 @@ def remove_comment():
 @app.route('/search', methods=['POST'])
 @limiter.limit("5 per minute")
 def search():
-    if 'credentials' not in session:
-        return redirect(url_for('authorize'))
-    
     query = request.form.get('query')
     if not query:
         return jsonify({'error': 'No query provided'}), 400
     
-    results = YoutubeApi.make_search(query)
+    results = youtube_api.make_search(query)
     if results is None:
         return jsonify({'error': 'An error occurred while searching'}), 500
     
@@ -195,9 +163,6 @@ def search():
 @app.route('/comment', methods=['POST'])
 @limiter.limit("7 per minute")
 def comment():
-    if 'credentials' not in session:
-        return redirect(url_for('authorize'))
-    
     user_id = session.get('user_id')
     if not user_id:
         return jsonify({'error': 'User not authenticated'}), 401
@@ -211,7 +176,7 @@ def comment():
         return jsonify({'error': 'No comments available'}), 400
     
     random_comment = random.choice(user_comments)
-    success = YoutubeApi.add_comment(video_id, random_comment)
+    success = youtube_api.add_comment(video_id, random_comment)
     
     if success:
         return jsonify({'status': 'success', 'comment': random_comment})
@@ -222,6 +187,13 @@ def comment():
 def ratelimit_handler(e):
     return jsonify({'error': 'Rate limit exceeded'}), 429
 
+@app.route('/privacy-policy')
+def privacy_policy():
+    return render_template('privacy_policy.html')
+
 if __name__ == '__main__':
-    os.environ['OAUTHLIB_INSECURE_TRANSPORT'] = '1'  # For development only
     app.run(debug=True)
+
+@app.route('/privacy-policy')
+def privacy_policy():
+    return render_template('privacy_policy.html')
