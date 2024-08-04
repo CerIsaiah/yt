@@ -87,7 +87,7 @@
         <div id="results" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8"></div>
         <footer class="mt-12 py-4 bg-gray-200">
             <div class="container mx-auto px-4 text-center">
-                <a href="{{ url_for('privacy_policy') }}" class="text-blue-500 hover:underline text-center">Privacy Policy</a>
+                <a href="{{ url_for('privacy') }}" class="text-blue-500 hover:underline text-center">Privacy Policy</a>
             </div>
         </footer>
     </div>
@@ -195,40 +195,44 @@
             }
 
             window.initiateSearch = function() {
-                const searchQueryInput = document.getElementById('searchQuery');
-                const resultsDiv = document.getElementById('results');
-                if (!searchQueryInput || !resultsDiv) {
-                    console.error('Search query input or results div not found');
-                    return;
-                }
-                const query = searchQueryInput.value;
-                resultsDiv.innerHTML = '<div class="col-span-full text-center text-gray-500 pulse">Initiating search...</div>';
-                hideError('searchError');
-                
-                axios.post('/search', `query=${encodeURIComponent(query)}`, {
-                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
-                })
-                .then(function (response) {
-                    if (response.data.items && Array.isArray(response.data.items)) {
-                        displayResults(response.data.items);
-                    } else {
-                        showError('searchError', 'No results found or unexpected response format.');
-                        resultsDiv.innerHTML = '';
-                    }
-                })
-                .catch(function (error) {
-                    console.error('Error:', error);
-                    resultsDiv.innerHTML = '';
-                    if (error.response && error.response.status === 401) {
-                        // Redirect to authorization if unauthorized
-                        window.location.href = '/authorize';
-                    } else if (error.response) {
-                        showError('searchError', error.response.data.error || 'An error occurred while searching. Please try again.');
-                    } else {
-                        showError('searchError', 'An error occurred while searching. Please try again.');
-                    }
-                });
+    const searchQueryInput = document.getElementById('searchQuery');
+    const resultsDiv = document.getElementById('results');
+    if (!searchQueryInput || !resultsDiv) {
+        console.error('Search query input or results div not found');
+        return;
+    }
+    const query = searchQueryInput.value;
+    resultsDiv.innerHTML = '<div class="col-span-full text-center text-gray-500 pulse">Initiating search...</div>';
+    hideError('searchError');
+    
+    axios.post('/search', `query=${encodeURIComponent(query)}`, {
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
+    })
+    .then(function (response) {
+        if (response.data.items && Array.isArray(response.data.items)) {
+            displayResults(response.data.items);
+        } else {
+            showError('searchError', 'No results found or unexpected response format.');
+            resultsDiv.innerHTML = '';
+        }
+    })
+    .catch(function (error) {
+        console.error('Error:', error);
+        resultsDiv.innerHTML = '';
+        if (error.response && error.response.status === 401) {
+            // Redirect to authorization if unauthorized
+            if (error.response.data.redirect) {
+                window.location.href = error.response.data.redirect;
+            } else {
+                window.location.href = '/authorize';
             }
+        } else if (error.response) {
+            showError('searchError', error.response.data.error || 'An error occurred while searching. Please try again.');
+        } else {
+            showError('searchError', 'An error occurred while searching. Please try again.');
+        }
+    });
+}
 
 function displayResults(items) {
     const resultsDiv = document.getElementById('results');

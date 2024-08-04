@@ -140,16 +140,23 @@ def authorize():
 
 @app.route('/oauth2callback')
 def oauth2callback():
-    flow = Flow.from_client_config(
-        CLIENT_CONFIG,
-        scopes=SCOPES,
-        state=session['state'],
-        redirect_uri=url_for('oauth2callback', _external=True)
-    )
-    flow.fetch_token(authorization_response=request.url)
-    credentials = flow.credentials
-    session['credentials'] = credentials_to_dict(credentials)
-    return redirect(url_for('index'))
+    try:
+        flow = Flow.from_client_config(
+            CLIENT_CONFIG,
+            scopes=SCOPES,
+            state=session['state']
+        )
+        flow.redirect_uri = url_for('oauth2callback', _external=True)
+
+        authorization_response = request.url
+        flow.fetch_token(authorization_response=authorization_response)
+
+        credentials = flow.credentials
+        session['credentials'] = credentials_to_dict(credentials)
+        return redirect(url_for('index'))
+    except Exception as e:
+        print(f"OAuth callback error: {str(e)}")
+        return redirect(url_for('reauth'))
 
 @app.route('/clear')
 def clear_credentials():
@@ -161,6 +168,8 @@ def get_youtube_api():
     if 'credentials' not in session:
         return None
     credentials = Credentials(**session['credentials'])
+    if not credentials or not credentials.valid:
+        return None
     return YoutubeApi(credentials)
 
 @app.route('/get_comments', methods=['GET'])
@@ -212,17 +221,20 @@ def remove_comment():
 def search():
     youtube_api = get_youtube_api()
     if not youtube_api:
-        return jsonify({'error': 'Not authenticated. Please authorize first.'}), 401
+        return jsonify({'error': 'Not authenticated', 'redirect': url_for('authorize')}), 401
 
     query = request.form.get('query')
     if not query:
         return jsonify({'error': 'No query provided'}), 400
     
-    results = youtube_api.make_search(query)
-    if results is None:
+    try:
+        results = youtube_api.make_search(query)
+        if results is None:
+            return jsonify({'error': 'An error occurred while searching'}), 500
+        return jsonify(results)
+    except Exception as e:
+        print(f"Search error: {str(e)}")
         return jsonify({'error': 'An error occurred while searching'}), 500
-    
-    return jsonify(results)
 
 @app.route('/comment', methods=['POST'])
 @limiter.limit("7 per minute")
@@ -253,14 +265,20 @@ def comment():
     except HttpError as e:
         error_message = e.error_details[0]['message'] if e.error_details else str(e)
         return jsonify({'error': f'YouTube API error: {error_message}'}), e.resp.status
-    
+
+
+@app.route('/reauth')
+def reauth():
+    session.clear()
+    return redirect(url_for('authorize'))
+
 @app.errorhandler(429)
 def ratelimit_handler(e):
     return jsonify({'error': 'Rate limit exceeded'}), 429
 
-@app.route('/privacy-policy')
-def privacy_policy():
-    return render_template('privacy_policy.html')
+@app.route('/privacy')
+def privacy():
+    return render_template('privacy.html')
 
 if __name__ == '__main__':
     os.environ['OAUTHLIB_INSECURE_TRANSPORT'] = '1'
