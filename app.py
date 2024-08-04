@@ -161,7 +161,7 @@ def search():
     return jsonify(results)
 
 @app.route('/comment', methods=['POST'])
-@limiter.limit("3 per minute")
+@limiter.limit("7 per minute")
 def comment():
     user_id = session.get('user_id')
     if not user_id:
