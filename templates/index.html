@@ -74,6 +74,8 @@
                 <nav>
                     <a href="#" class="hover:text-accent transition duration-300">Home</a>
                     <a href="{{ url_for('privacy') }}" class="ml-4 hover:text-accent transition duration-300">Privacy Policy</a>
+                    <button id="signOutButton" onclick="signOut()" class="ml-4 bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600 transition duration-300 hidden">Sign Out</button>
+
                 </nav>
             </div>
         </header>
@@ -155,33 +157,6 @@
                 </div>
             </div>
         </footer>
-    
-        <script>
-            document.addEventListener('DOMContentLoaded', function() {
-                // ... (previous functions remain the same)
-    
-                function updateSearchButton(authenticated) {
-                    const searchButton = document.getElementById('searchButton');
-                    const searchButtonText = document.getElementById('searchButtonText');
-                    const googleIcon = document.getElementById('googleIcon');
-    
-                    if (authenticated) {
-                        searchButtonText.textContent = 'Search';
-                        googleIcon.style.opacity = '0';
-                        searchButton.onclick = initiateSearch;
-                    } else {
-                        searchButtonText.textContent = 'Sign in with Google';
-                        googleIcon.style.opacity = '1';
-                        searchButton.onclick = handleSearch;
-                    }
-                }
-    
-                // ... (rest of the JavaScript remains the same)
-    
-                // Check auth status when the page loads
-                checkAuthStatus();
-            });
-        </script>
     </body>
     </html>
 
@@ -390,20 +365,7 @@
         });
     }
 
-    window.handleSearch = function() {
-        axios.get('/auth_status')
-            .then(function (response) {
-                if (response.data.authenticated) {
-                    initiateSearch();
-                } else {
-                    window.location.href = '/authorize';
-                }
-            })
-            .catch(function (error) {
-                console.error('Error checking auth status:', error);
-                window.location.href = '/authorize';
-            });
-    }
+
 
     function signOut() {
         axios.post('/sign_out')
@@ -418,17 +380,19 @@
     }
 
     function checkAuthStatus() {
-        axios.get('/auth_status')
-            .then(function (response) {
-                updateSearchButton(response.data.authenticated);
-            })
-            .catch(function (error) {
-                console.error('Error checking auth status:', error);
-                updateSearchButton(false);
-            });
-    }
+                axios.get('/auth_status')
+                    .then(function (response) {
+                        updateSearchButton(response.data.authenticated);
+                        updateSignOutButton(response.data.authenticated);
+                    })
+                    .catch(function (error) {
+                        console.error('Error checking auth status:', error);
+                        updateSearchButton(false);
+                        updateSignOutButton(false);
+                    });
+            }
 
-    function updateSearchButton(authenticated) {
+            function updateSearchButton(authenticated) {
                 const searchButton = document.getElementById('searchButton');
                 const searchButtonText = document.getElementById('searchButtonText');
                 const googleIcon = document.getElementById('googleIcon');
@@ -442,6 +406,45 @@
                     googleIcon.style.opacity = '1';
                     searchButton.onclick = handleSearch;
                 }
+            }
+
+            function updateSignOutButton(authenticated) {
+                const signOutButton = document.getElementById('signOutButton');
+                signOutButton.style.display = authenticated ? 'inline-block' : 'none';
+            }
+
+            window.handleSearch = function() {
+                axios.get('/auth_status')
+                    .then(function (response) {
+                        if (response.data.authenticated) {
+                            initiateSearch();
+                        } else {
+                            window.location.href = '/authorize';
+                        }
+                    })
+                    .catch(function (error) {
+                        console.error('Error checking auth status:', error);
+                        window.location.href = '/authorize';
+                    });
+            }
+            window.signOut = function() {
+                axios.post('/sign_out')
+                    .then(function () {
+                        updateSearchButton(false);
+                        updateSignOutButton(false);
+                        showError('searchError', 'You have been signed out. Please sign in again.');
+                        // Clear any cached credentials
+                        if (gapi && gapi.auth2) {
+                            var auth2 = gapi.auth2.getAuthInstance();
+                            if (auth2 != null) {
+                                auth2.signOut().then(auth2.disconnect());
+                            }
+                        }
+                    })
+                    .catch(function (error) {
+                        console.error('Error signing out:', error);
+                        showError('searchError', 'An error occurred while signing out. Please try again.');
+                    });
             }
 
     // Load comments when the page loads

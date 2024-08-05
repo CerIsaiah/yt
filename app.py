@@ -135,7 +135,8 @@ def authorize():
     )
     authorization_url, state = flow.authorization_url(
         access_type='offline',
-        include_granted_scopes='true'
+        include_granted_scopes='true',
+        prompt='select_account'  # This forces Google to show the account selection screen
     )
     session['state'] = state
     return redirect(authorization_url)
@@ -302,12 +303,16 @@ def sign_out():
                     params={'token': credentials.token},
                     headers = {'content-type': 'application/x-www-form-urlencoded'})
             except:
-                # If revoking fails, we'll still clear the session
-                pass
+                pass  # If revoking fails, we'll still clear the session
     
     # Clear the session
     session.clear()
-    return jsonify({'status': 'success', 'message': 'Signed out successfully'})
+    
+    # Clear any Flask-specific cookies
+    response = jsonify({'status': 'success', 'message': 'Signed out successfully'})
+    response.set_cookie('session', '', expires=0)
+    
+    return response
 
 @app.route('/auth_status')
 def auth_status():
