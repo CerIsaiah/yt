@@ -10,6 +10,8 @@ import json
 import random
 from datetime import timedelta
 from dotenv import load_dotenv
+from google.auth.transport.requests import Request
+import requests 
 
 # Load environment variables
 load_dotenv()
@@ -232,10 +234,15 @@ def search():
         if results is None:
             return jsonify({'error': 'An error occurred while searching'}), 500
         return jsonify(results)
-    except Exception as e:
+    except HttpError as e:
+        if e.resp.status == 401:
+            # Clear session if unauthorized
+            session.clear()
+            return jsonify({'error': 'Authentication failed', 'redirect': url_for('authorize')}), 401
         print(f"Search error: {str(e)}")
         return jsonify({'error': 'An error occurred while searching'}), 500
 
+# Update the comment function to handle authentication errors
 @app.route('/comment', methods=['POST'])
 @limiter.limit("7 per minute")
 def comment():
@@ -263,6 +270,10 @@ def comment():
         else:
             return jsonify({'error': 'Unable to post comment. Please check video permissions.'}), 403
     except HttpError as e:
+        if e.resp.status == 401:
+            # Clear session if unauthorized
+            session.clear()
+            return jsonify({'error': 'Authentication failed', 'redirect': url_for('authorize')}), 401
         error_message = e.error_details[0]['message'] if e.error_details else str(e)
         return jsonify({'error': f'YouTube API error: {error_message}'}), e.resp.status
 
@@ -279,6 +290,41 @@ def ratelimit_handler(e):
 @app.route('/privacy-policy')
 def privacy():
     return render_template('privacy-policy.html')
+
+@app.route('/sign_out', methods=['POST'])
+def sign_out():
+    if 'credentials' in session:
+        credentials = Credentials(**session['credentials'])
+        if credentials and credentials.valid:
+            try:
+                # Revoke the token
+                requests.post('https://oauth2.googleapis.com/revoke',
+                    params={'token': credentials.token},
+                    headers = {'content-type': 'application/x-www-form-urlencoded'})
+            except:
+                # If revoking fails, we'll still clear the session
+                pass
+    
+    # Clear the session
+    session.clear()
+    return jsonify({'status': 'success', 'message': 'Signed out successfully'})
+
+@app.route('/auth_status')
+def auth_status():
+    if 'credentials' in session:
+        credentials = Credentials(**session['credentials'])
+        if credentials and credentials.valid:
+            if credentials.expired and credentials.refresh_token:
+                try:
+                    credentials.refresh(Request())
+                    session['credentials'] = credentials_to_dict(credentials)
+                    return jsonify({'authenticated': True})
+                except:
+                    # If refresh fails, we'll sign the user out
+                    session.clear()
+                    return jsonify({'authenticated': False})
+            return jsonify({'authenticated': True})
+    return jsonify({'authenticated': False})
 
 if __name__ == '__main__':
     os.environ['OAUTHLIB_INSECURE_TRANSPORT'] = '1'

@@ -27,290 +27,430 @@
         .pulse {
             animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
         }
+        .google-icon {
+            margin-right: 8px;
+        }
     </style>
 </head>
 <body class="bg-gray-50 min-h-screen">
-
-    <header class="bg-primary text-white py-4 shadow-md">
-        <div class="container mx-auto px-4 flex justify-between items-center">
-            <h1 class="text-3xl font-bold">YouTube Marketer</h1>
-            <nav>
-                <a href="#" class="hover:text-accent transition duration-300">Home</a>
-                <a href="{{ url_for('privacy') }}" class="ml-4 hover:text-accent transition duration-300">Privacy Policy</a>
-            </nav>
-        </div>
-    </header>
-
-    <div class="container mx-auto px-4 py-12">
-        <h1 class="text-6xl font-bold text-center text-gray-900 mb-4">Want to Market your App?</h1>
-        <h2 class="text-6xl font-bold text-center text-primary mb-4">Advertise with our Free AI Youtube Commentor! </h2>
-        <h3 class="text-4xl font-bold text-center text-gray-900 mb-8">To Comment on Videos in Your Niche</h4>
-        
-            <div class="mb-8">
-                <div class="flex max-w-2xl mx-auto">
-                    <input type="text" id="searchQuery" placeholder="Videos you want to comment on" class="flex-grow px-4 py-3 rounded-l-lg border-2 border-primary focus:outline-none focus:border-secondary text-lg">
-                    <button onclick="initiateSearch()" class="bg-primary text-white px-8 py-3 rounded-r-lg hover:bg-secondary transition duration-300 text-lg font-semibold">Search</button>
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>YouTube Marketer</title>
+        <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+        <script src="https://cdn.tailwindcss.com"></script>
+        <script>
+            tailwind.config = {
+                theme: {
+                    extend: {
+                        colors: {
+                            primary: '#3B82F6',
+                            secondary: '#1D4ED8',
+                            accent: '#60A5FA',
+                        }
+                    }
+                }
+            }
+        </script>
+        <style>
+            @keyframes pulse {
+                0%, 100% { opacity: 1; }
+                50% { opacity: .5; }
+            }
+            .pulse {
+                animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+            }
+            .google-icon {
+                transition: opacity 0.3s ease-in-out;
+            }
+        </style>
+    </head>
+    <body class="bg-gray-50 min-h-screen flex flex-col">
+        <header class="bg-primary text-white py-4 shadow-md">
+            <div class="container mx-auto px-4 flex justify-between items-center">
+                <h1 class="text-3xl font-bold">YouTube Marketer</h1>
+                <nav>
+                    <a href="#" class="hover:text-accent transition duration-300">Home</a>
+                    <a href="{{ url_for('privacy') }}" class="ml-4 hover:text-accent transition duration-300">Privacy Policy</a>
+                </nav>
+            </div>
+        </header>
+    
+        <main class="flex-grow container mx-auto px-4 py-8">
+            <h1 class="text-5xl font-bold text-center text-gray-900 mb-4">Want to Market your App?</h1>
+            <h2 class="text-4xl font-bold text-center text-primary mb-4">Advertise with our Free AI Youtube Commentor!</h2>
+            <h3 class="text-3xl font-bold text-center text-gray-900 mb-8">To Comment on Videos in Your Niche</h3>
+            
+            <div class="mb-12">
+                <div class="flex max-w-3xl mx-auto">
+                    <input type="text" id="searchQuery" placeholder="Videos you want to comment on" class="flex-grow px-6 py-4 rounded-l-lg border-2 border-primary focus:outline-none focus:border-secondary text-xl">
+                    <button id="searchButton" onclick="handleSearch()" class="bg-primary text-white px-10 py-4 rounded-r-lg hover:bg-secondary transition duration-300 text-xl font-semibold flex items-center justify-center min-w-[200px]">
+                        <svg id="googleIcon" class="google-icon mr-2" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="24px" height="24px">
+                            <path fill="#FFC107" d="M43.611,20.083H42V20H24v8h11.303c-1.649,4.657-6.08,8-11.303,8c-6.627,0-12-5.373-12-12c0-6.627,5.373-12,12-12c3.059,0,5.842,1.154,7.961,3.039l5.657-5.657C34.046,6.053,29.268,4,24,4C12.955,4,4,12.955,4,24c0,11.045,8.955,20,20,20c11.045,0,20-8.955,20-20C44,22.659,43.862,21.35,43.611,20.083z"/>
+                            <path fill="#FF3D00" d="M6.306,14.691l6.571,4.819C14.655,15.108,18.961,12,24,12c3.059,0,5.842,1.154,7.961,3.039l5.657-5.657C34.046,6.053,29.268,4,24,4C16.318,4,9.656,8.337,6.306,14.691z"/>
+                            <path fill="#4CAF50" d="M24,44c5.166,0,9.86-1.977,13.409-5.192l-6.19-5.238C29.211,35.091,26.715,36,24,36c-5.202,0-9.619-3.317-11.283-7.946l-6.522,5.025C9.505,39.556,16.227,44,24,44z"/>
+                            <path fill="#1976D2" d="M43.611,20.083H42V20H24v8h11.303c-0.792,2.237-2.231,4.166-4.087,5.571c0.001-0.001,0.002-0.001,0.003-0.002l6.19,5.238C36.971,39.205,44,34,44,24C44,22.659,43.862,21.35,43.611,20.083z"/>
+                        </svg>
+                        <span id="searchButtonText">Sign in with Google</span>
+                    </button>
                 </div>
-                <p id="searchError" class="mt-2 text-red-500 hidden"></p>
+                <p id="searchError" class="mt-2 text-red-500 text-center hidden"></p>
             </div>
     
-
-        <h2 class="text-3xl font-bold text-center text-gray-900 mb-8">How It Works</h2>
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-8 mb-12">
-            <div class="text-center">
-                <div class="text-4xl text-primary mb-4">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12 mx-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                    </svg>
+            <h2 class="text-3xl font-bold text-center text-gray-900 mb-8">How It Works</h2>
+            
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-8 mb-12">
+                    <div class="text-center">
+                        <div class="text-4xl text-primary mb-4">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12 mx-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                            </svg>
+                        </div>
+                        <h3 class="text-xl font-semibold mb-2">Create Your Comments</h3>
+                        <p class="text-gray-600">Add custom comments to use on videos.</p>
+                    </div>
+                    <div class="text-center">
+                        <div class="text-4xl text-primary mb-4">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12 mx-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                            </svg>
+                        </div>
+                        <h3 class="text-xl font-semibold mb-2">Explore Videos</h3>
+                        <p class="text-gray-600">Search and browse YouTube videos.</p>
+                    </div>
+                    <div class="text-center">
+                        <div class="text-4xl text-primary mb-4">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12 mx-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                            </svg>
+                        </div>
+                        <h3 class="text-xl font-semibold mb-2">Comment Automatically</h3>
+                        <p class="text-gray-600">Add comments to videos with one click.</p>
+                    </div>
+                <!-- How It Works content -->
+            </div>
+    
+            <div class="bg-white rounded-lg shadow-lg p-6 mb-12">
+                <h2 class="text-2xl font-semibold text-gray-900 mb-4">Type Comments to Post</h2>
+                <ul id="commentList" class="space-y-2 mb-4"></ul>
+                <div class="flex">
+                    <input type="text" id="newComment" placeholder="Add a new comment" class="flex-grow px-4 py-2 rounded-l-lg border-2 border-accent focus:outline-none focus:border-primary">
+                    <button onclick="addCustomComment()" class="bg-accent text-white px-6 py-2 rounded-r-lg hover:bg-primary transition duration-300 font-semibold">Add</button>
                 </div>
-                <h3 class="text-xl font-semibold mb-2">Create Your Comments</h3>
-                <p class="text-gray-600">Add custom comments to use on videos.</p>
             </div>
-            <div class="text-center">
-                <div class="text-4xl text-primary mb-4">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12 mx-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                    </svg>
+    
+            <div id="results" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-12"></div>
+        </main>
+    
+        <footer class="mt-auto py-4 bg-gray-200">
+            <div class="container mx-auto px-4">
+                <div class="bg-blue-100 border-l-4 border-blue-500 text-blue-700 p-4 mb-4" role="alert">
+                    <p class="font-bold">Limited Use Disclosure</p>
+                    <p>YouTube Marketer's use and transfer to any other app of information received from Google APIs will adhere to the <a href="https://developers.google.com/terms/api-services-user-data-policy" class="underline">Google API Services User Data Policy</a>, including the Limited Use requirements.</p>
                 </div>
-                <h3 class="text-xl font-semibold mb-2">Explore Videos</h3>
-                <p class="text-gray-600">Search and browse YouTube videos.</p>
-            </div>
-            <div class="text-center">
-                <div class="text-4xl text-primary mb-4">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12 mx-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-                    </svg>
+                <div class="text-center">
+                    <a href="{{ url_for('privacy') }}" class="text-blue-500 hover:underline">Privacy Policy</a>
                 </div>
-                <h3 class="text-xl font-semibold mb-2">Comment Automatically</h3>
-                <p class="text-gray-600">Add comments to videos with one click.</p>
             </div>
-        </div>
-
-        <div class="bg-white rounded-lg shadow-lg p-6 mb-8">
-            <h2 class="text-2xl font-semibold text-gray-900 mb-4">Type Comments to Post</h2>
-            <ul id="commentList" class="space-y-2 mb-4"></ul>
-            <div class="flex">
-                <input type="text" id="newComment" placeholder="Add a new comment" class="flex-grow px-4 py-2 rounded-l-lg border-2 border-accent focus:outline-none focus:border-primary">
-                <button onclick="addCustomComment()" class="bg-accent text-white px-6 py-2 rounded-r-lg hover:bg-primary transition duration-300 font-semibold">Add</button>
-            </div>
-        </div>
-
-        <div class="bg-blue-100 border-l-4 border-blue-500 text-blue-700 p-4 mt-4" role="alert">
-            <p class="font-bold">Limited Use Disclosure</p>
-            <p>YouTube Marketer's use and transfer to any other app of information received from Google APIs will adhere to the <a href="https://developers.google.com/terms/api-services-user-data-policy" class="underline">Google API Services User Data Policy</a>, including the Limited Use requirements.</p>
-        </div>
-        <div id="results" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8"></div>
-        
-    </div>
+        </footer>
+    
+        <script>
+            document.addEventListener('DOMContentLoaded', function() {
+                // ... (previous functions remain the same)
+    
+                function updateSearchButton(authenticated) {
+                    const searchButton = document.getElementById('searchButton');
+                    const searchButtonText = document.getElementById('searchButtonText');
+                    const googleIcon = document.getElementById('googleIcon');
+    
+                    if (authenticated) {
+                        searchButtonText.textContent = 'Search';
+                        googleIcon.style.opacity = '0';
+                        searchButton.onclick = initiateSearch;
+                    } else {
+                        searchButtonText.textContent = 'Sign in with Google';
+                        googleIcon.style.opacity = '1';
+                        searchButton.onclick = handleSearch;
+                    }
+                }
+    
+                // ... (rest of the JavaScript remains the same)
+    
+                // Check auth status when the page loads
+                checkAuthStatus();
+            });
+        </script>
+    </body>
+    </html>
 
     <script>
         document.addEventListener('DOMContentLoaded', function() {
-            function showError(elementId, message) {
-                const errorElement = document.getElementById(elementId);
-                if (errorElement) {
-                    errorElement.textContent = message;
-                    errorElement.classList.remove('hidden');
-                }
-            }
+    function showError(elementId, message) {
+        const errorElement = document.getElementById(elementId);
+        if (errorElement) {
+            errorElement.textContent = message;
+            errorElement.classList.remove('hidden');
+        }
+    }
 
-            function hideError(elementId) {
-                const errorElement = document.getElementById(elementId);
-                if (errorElement) {
-                    errorElement.classList.add('hidden');
-                }
-            }
+    function hideError(elementId) {
+        const errorElement = document.getElementById(elementId);
+        if (errorElement) {
+            errorElement.classList.add('hidden');
+        }
+    }
 
-            function loadComments() {
-                axios.get('/get_comments')
-                    .then(function (response) {
-                        const commentList = document.getElementById('commentList');
-                        if (!commentList) {
-                            console.error('Comment list element not found');
-                            return;
-                        }
-                        commentList.innerHTML = '';
-                        response.data.comments.forEach(comment => {
-                            addCommentToList(comment);
-                        });
-                    })
-                    .catch(function (error) {
-                        console.error('Error loading comments:', error);
-                    });
-            }
-
-            function addCommentToList(comment) {
+    function loadComments() {
+        axios.get('/get_comments')
+            .then(function (response) {
                 const commentList = document.getElementById('commentList');
                 if (!commentList) {
                     console.error('Comment list element not found');
                     return;
                 }
-                const li = document.createElement('li');
-                li.className = 'flex items-center justify-between bg-blue-50 p-2 rounded';
-                li.innerHTML = `
-                    <span class="text-gray-800">"${comment}"</span>
-                    <button onclick="removeComment('${comment.replace(/'/g, "\\'")}')" class="text-red-500 hover:text-red-700 ml-2">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                            <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd" />
-                        </svg>
-                    </button>
-                `;
-                commentList.appendChild(li);
-            }
-
-            window.removeComment = function(comment) {
-                axios.post('/remove_comment', `comment=${encodeURIComponent(comment)}`, {
-                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
-                })
-                .then(function (response) {
-                    if (response.data.status === 'success') {
-                        loadComments();
-                    } else {
-                        console.error('Unexpected response:', response.data);
-                        alert('An unexpected error occurred. Please try again.');
-                    }
-                })
-                .catch(function (error) {
-                    console.error('Error:', error);
-                    if (error.response) {
-                        alert(`Error removing comment: ${error.response.data.error || 'Please try again.'}`);
-                    } else {
-                        alert('Error removing comment. Please try again.');
-                    }
+                commentList.innerHTML = '';
+                response.data.comments.forEach(comment => {
+                    addCommentToList(comment);
                 });
-            }
-
-            window.addCustomComment = function() {
-                const newCommentInput = document.getElementById('newComment');
-                if (!newCommentInput) {
-                    console.error('New comment input not found');
-                    return;
-                }
-                const newComment = newCommentInput.value;
-                if (!newComment.trim()) {
-                    alert('Please enter a comment');
-                    return;
-                }
-                axios.post('/add_comment', `new_comment=${encodeURIComponent(newComment)}`, {
-                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
-                })
-                .then(function (response) {
-                    if (response.data.status === 'success') {
-                        newCommentInput.value = '';
-                        loadComments();
-                    }
-                })
-                .catch(function (error) {
-                    console.error('Error:', error);
-                    alert('Error adding comment. Please try again.');
-                });
-            }
-
-            window.initiateSearch = function() {
-    const searchQueryInput = document.getElementById('searchQuery');
-    const resultsDiv = document.getElementById('results');
-    if (!searchQueryInput || !resultsDiv) {
-        console.error('Search query input or results div not found');
-        return;
+            })
+            .catch(function (error) {
+                console.error('Error loading comments:', error);
+            });
     }
-    const query = searchQueryInput.value;
-    resultsDiv.innerHTML = '<div class="col-span-full text-center text-gray-500 pulse">Initiating search...</div>';
-    hideError('searchError');
-    
-    axios.post('/search', `query=${encodeURIComponent(query)}`, {
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
-    })
-    .then(function (response) {
-        if (response.data.items && Array.isArray(response.data.items)) {
-            displayResults(response.data.items);
-        } else {
-            showError('searchError', 'No results found or unexpected response format.');
-            resultsDiv.innerHTML = '';
+
+    function addCommentToList(comment) {
+        const commentList = document.getElementById('commentList');
+        if (!commentList) {
+            console.error('Comment list element not found');
+            return;
         }
-    })
-    .catch(function (error) {
-        console.error('Error:', error);
-        resultsDiv.innerHTML = '';
-        if (error.response && error.response.status === 401) {
-            // Redirect to authorization if unauthorized
-            if (error.response.data.redirect) {
-                window.location.href = error.response.data.redirect;
+        const li = document.createElement('li');
+        li.className = 'flex items-center justify-between bg-blue-50 p-2 rounded';
+        li.innerHTML = `
+            <span class="text-gray-800">"${comment}"</span>
+            <button onclick="removeComment('${comment.replace(/'/g, "\\'")}')" class="text-red-500 hover:text-red-700 ml-2">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                    <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd" />
+                </svg>
+            </button>
+        `;
+        commentList.appendChild(li);
+    }
+
+    window.removeComment = function(comment) {
+        axios.post('/remove_comment', `comment=${encodeURIComponent(comment)}`, {
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
+        })
+        .then(function (response) {
+            if (response.data.status === 'success') {
+                loadComments();
             } else {
-                window.location.href = '/authorize';
+                console.error('Unexpected response:', response.data);
+                alert('An unexpected error occurred. Please try again.');
             }
-        } else if (error.response) {
-            showError('searchError', error.response.data.error || 'An error occurred while searching. Please try again.');
-        } else {
-            showError('searchError', 'An error occurred while searching. Please try again.');
-        }
-    });
-}
-
-function displayResults(items) {
-    const resultsDiv = document.getElementById('results');
-    if (!resultsDiv) {
-        console.error('Results div not found');
-        return;
-    }
-    resultsDiv.innerHTML = '';
-    if (items.length === 0) {
-        resultsDiv.innerHTML = '<div class="col-span-full text-center text-gray-500">No results found.</div>';
-        return;
-    }
-                items.forEach(item => {
-                    const videoDiv = document.createElement('div');
-                    videoDiv.className = 'bg-white rounded-lg shadow-md overflow-hidden';
-                    videoDiv.innerHTML = `
-                        <a href="https://www.youtube.com/watch?v=${item.id.videoId}" target="_blank" rel="noopener noreferrer">
-                            <img src="${item.snippet.thumbnails.medium.url}" alt="${item.snippet.title}" class="w-full h-48 object-cover">
-                        </a>
-                        <div class="p-4">
-                            <h3 class="text-lg font-semibold text-gray-800 mb-2">
-                                <a href="https://www.youtube.com/watch?v=${item.id.videoId}" target="_blank" rel="noopener noreferrer" class="hover:text-blue-600">
-                                    ${item.snippet.title}
-                                </a>
-                            </h3>
-                            <p class="text-gray-600 text-sm mb-4">${item.snippet.description}</p>
-                            <button onclick="addComment('${item.id.videoId}')" class="bg-secondary text-white px-4 py-2 rounded hover:bg-primary transition duration-300">View Channel then add comment</button>
-                            <p id="comment-status-${item.id.videoId}" class="mt-2 text-sm text-gray-500"></p>
-                        </div>
-                    `;
-                    resultsDiv.appendChild(videoDiv);
-                });
+        })
+        .catch(function (error) {
+            console.error('Error:', error);
+            if (error.response) {
+                alert(`Error removing comment: ${error.response.data.error || 'Please try again.'}`);
+            } else {
+                alert('Error removing comment. Please try again.');
             }
-
-            window.addComment = function(videoId) {
-                const statusElement = document.getElementById(`comment-status-${videoId}`);
-                if (!statusElement) {
-                    console.error(`Comment status element not found for video ${videoId}`);
-                    return;
-                }
-                statusElement.textContent = 'Adding comment...';
-                statusElement.className = 'mt-2 text-sm text-blue-500 pulse';
-                
-                axios.post('/comment', `video_id=${videoId}`, {
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
-    })
-    .then(function (response) {
-        if (response.data.status === 'success') {
-            statusElement.textContent = `Comment added: "${response.data.comment}"`;
-            statusElement.className = 'mt-2 text-sm text-green-500';
-        }
-    }).catch(function (error) {
-                    console.error('Error:', error);
-                    if (error.response && error.response.status === 429) {
-                        statusElement.textContent = 'Rate limit exceeded. Please try again later.';
-                    } else if (error.response) {
-                        statusElement.textContent = error.response.data.error || 'Error adding comment. Please try again.';
-                    } else {
-                        statusElement.textContent = 'Error adding comment. Please try again.';
-                    }
-                    statusElement.className = 'mt-2 text-sm text-red-500';
-                });
-            }
-
-            // Load comments when the page loads
-            loadComments();
         });
+    }
+
+    window.addCustomComment = function() {
+        const newCommentInput = document.getElementById('newComment');
+        if (!newCommentInput) {
+            console.error('New comment input not found');
+            return;
+        }
+        const newComment = newCommentInput.value;
+        if (!newComment.trim()) {
+            alert('Please enter a comment');
+            return;
+        }
+        axios.post('/add_comment', `new_comment=${encodeURIComponent(newComment)}`, {
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
+        })
+        .then(function (response) {
+            if (response.data.status === 'success') {
+                newCommentInput.value = '';
+                loadComments();
+            }
+        })
+        .catch(function (error) {
+            console.error('Error:', error);
+            alert('Error adding comment. Please try again.');
+        });
+    }
+
+    window.initiateSearch = function() {
+        const searchQueryInput = document.getElementById('searchQuery');
+        const resultsDiv = document.getElementById('results');
+        if (!searchQueryInput || !resultsDiv) {
+            console.error('Search query input or results div not found');
+            return;
+        }
+        const query = searchQueryInput.value;
+        resultsDiv.innerHTML = '<div class="col-span-full text-center text-gray-500 pulse">Initiating search...</div>';
+        hideError('searchError');
+        
+        axios.post('/search', `query=${encodeURIComponent(query)}`, {
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
+        })
+        .then(function (response) {
+            if (response.data.items && Array.isArray(response.data.items)) {
+                displayResults(response.data.items);
+            } else {
+                showError('searchError', 'No results found or unexpected response format.');
+                resultsDiv.innerHTML = '';
+            }
+        })
+        .catch(function (error) {
+            console.error('Error:', error);
+            resultsDiv.innerHTML = '';
+            if (error.response && error.response.status === 401) {
+                // Redirect to authorization if unauthorized
+                if (error.response.data.redirect) {
+                    window.location.href = error.response.data.redirect;
+                } else {
+                    window.location.href = '/authorize';
+                }
+            } else if (error.response) {
+                showError('searchError', error.response.data.error || 'An error occurred while searching. Please try again.');
+            } else {
+                showError('searchError', 'An error occurred while searching. Please try again.');
+            }
+        });
+    }
+
+    function displayResults(items) {
+        const resultsDiv = document.getElementById('results');
+        if (!resultsDiv) {
+            console.error('Results div not found');
+            return;
+        }
+        resultsDiv.innerHTML = '';
+        if (items.length === 0) {
+            resultsDiv.innerHTML = '<div class="col-span-full text-center text-gray-500">No results found.</div>';
+            return;
+        }
+        items.forEach(item => {
+            const videoDiv = document.createElement('div');
+            videoDiv.className = 'bg-white rounded-lg shadow-md overflow-hidden';
+            videoDiv.innerHTML = `
+                <a href="https://www.youtube.com/watch?v=${item.id.videoId}" target="_blank" rel="noopener noreferrer">
+                    <img src="${item.snippet.thumbnails.medium.url}" alt="${item.snippet.title}" class="w-full h-48 object-cover">
+                </a>
+                <div class="p-4">
+                    <h3 class="text-lg font-semibold text-gray-800 mb-2">
+                        <a href="https://www.youtube.com/watch?v=${item.id.videoId}" target="_blank" rel="noopener noreferrer" class="hover:text-blue-600">
+                            ${item.snippet.title}
+                        </a>
+                    </h3>
+                    <p class="text-gray-600 text-sm mb-4">${item.snippet.description}</p>
+                    <button onclick="addComment('${item.id.videoId}')" class="bg-secondary text-white px-4 py-2 rounded hover:bg-primary transition duration-300">View Channel then add comment</button>
+                    <p id="comment-status-${item.id.videoId}" class="mt-2 text-sm text-gray-500"></p>
+                </div>
+            `;
+            resultsDiv.appendChild(videoDiv);
+        });
+    }
+
+    window.addComment = function(videoId) {
+        const statusElement = document.getElementById(`comment-status-${videoId}`);
+        if (!statusElement) {
+            console.error(`Comment status element not found for video ${videoId}`);
+            return;
+        }
+        statusElement.textContent = 'Adding comment...';
+        statusElement.className = 'mt-2 text-sm text-blue-500 pulse';
+        
+        axios.post('/comment', `video_id=${videoId}`, {
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
+        })
+        .then(function (response) {
+            if (response.data.status === 'success') {
+                statusElement.textContent = `Comment added: "${response.data.comment}"`;
+                statusElement.className = 'mt-2 text-sm text-green-500';
+            }
+        }).catch(function (error) {
+            console.error('Error:', error);
+            if (error.response && error.response.status === 429) {
+                statusElement.textContent = 'Rate limit exceeded. Please try again later.';
+            } else if (error.response) {
+                statusElement.textContent = error.response.data.error || 'Error adding comment. Please try again.';
+            } else {
+                statusElement.textContent = 'Error adding comment. Please try again.';
+            }
+            statusElement.className = 'mt-2 text-sm text-red-500';
+        });
+    }
+
+    window.handleSearch = function() {
+        axios.get('/auth_status')
+            .then(function (response) {
+                if (response.data.authenticated) {
+                    initiateSearch();
+                } else {
+                    window.location.href = '/authorize';
+                }
+            })
+            .catch(function (error) {
+                console.error('Error checking auth status:', error);
+                window.location.href = '/authorize';
+            });
+    }
+
+    function signOut() {
+        axios.post('/sign_out')
+            .then(function () {
+                updateSearchButton(false);
+                showError('searchError', 'You have been signed out. Please sign in again.');
+            })
+            .catch(function (error) {
+                console.error('Error signing out:', error);
+                showError('searchError', 'An error occurred while signing out. Please try again.');
+            });
+    }
+
+    function checkAuthStatus() {
+        axios.get('/auth_status')
+            .then(function (response) {
+                updateSearchButton(response.data.authenticated);
+            })
+            .catch(function (error) {
+                console.error('Error checking auth status:', error);
+                updateSearchButton(false);
+            });
+    }
+
+    function updateSearchButton(authenticated) {
+                const searchButton = document.getElementById('searchButton');
+                const searchButtonText = document.getElementById('searchButtonText');
+                const googleIcon = document.getElementById('googleIcon');
+
+                if (authenticated) {
+                    searchButtonText.textContent = 'Search';
+                    googleIcon.style.opacity = '0';
+                    searchButton.onclick = initiateSearch;
+                } else {
+                    searchButtonText.textContent = 'Sign in with Google';
+                    googleIcon.style.opacity = '1';
+                    searchButton.onclick = handleSearch;
+                }
+            }
+
+    // Load comments when the page loads
+    checkAuthStatus();
+    loadComments();
+});
+
+
+    
     </script>
 </body>
 </html>
