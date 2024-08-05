@@ -276,9 +276,9 @@ def reauth():
 def ratelimit_handler(e):
     return jsonify({'error': 'Rate limit exceeded'}), 429
 
-@app.route('/privacy')
-def privacy():
-    return render_template('privacy.html')
+@app.route('/privacy_policy')
+def privacy_policy():
+    return render_template('privacy-policy.html')
 
 if __name__ == '__main__':
     os.environ['OAUTHLIB_INSECURE_TRANSPORT'] = '1'
