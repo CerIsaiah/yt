@@ -30,6 +30,17 @@
     </style>
 </head>
 <body class="bg-gray-50 min-h-screen">
+
+    <header class="bg-primary text-white py-4 shadow-md">
+        <div class="container mx-auto px-4 flex justify-between items-center">
+            <h1 class="text-3xl font-bold">YouTube Marketer</h1>
+            <nav>
+                <a href="#" class="hover:text-accent transition duration-300">Home</a>
+                <a href="{{ url_for('privacy') }}" class="ml-4 hover:text-accent transition duration-300">Privacy Policy</a>
+            </nav>
+        </div>
+    </header>
+
     <div class="container mx-auto px-4 py-12">
         <h1 class="text-6xl font-bold text-center text-gray-900 mb-4">Want to Market your App?</h1>
         <h2 class="text-6xl font-bold text-center text-primary mb-4">Advertise with our Free AI Youtube Commentor! </h2>
@@ -89,11 +100,7 @@
             <p>YouTube Marketer's use and transfer to any other app of information received from Google APIs will adhere to the <a href="https://developers.google.com/terms/api-services-user-data-policy" class="underline">Google API Services User Data Policy</a>, including the Limited Use requirements.</p>
         </div>
         <div id="results" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8"></div>
-        <footer class="mt-12 py-4 bg-gray-200">
-            <div class="container mx-auto px-4 text-center">
-                <a href="{{ url_for('privacy') }}" class="text-blue-500 hover:underline text-center">Privacy Policy</a>
-            </div>
-        </footer>
+        
     </div>
 
     <script>
