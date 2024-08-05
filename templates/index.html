@@ -431,15 +431,9 @@
                 axios.post('/sign_out')
                     .then(function () {
                         updateSearchButton(false);
-                        updateSignOutButton(false);
                         showError('searchError', 'You have been signed out. Please sign in again.');
-                        // Clear any cached credentials
-                        if (gapi && gapi.auth2) {
-                            var auth2 = gapi.auth2.getAuthInstance();
-                            if (auth2 != null) {
-                                auth2.signOut().then(auth2.disconnect());
-                            }
-                        }
+                        // Reload the page to ensure a clean state
+                        window.location.reload();
                     })
                     .catch(function (error) {
                         console.error('Error signing out:', error);

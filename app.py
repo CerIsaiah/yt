@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, jsonify, session, redirect, url_for
+from flask import Flask, render_template, request, jsonify, session, redirect, url_for, make_response
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 from googleapiclient.discovery import build
@@ -308,9 +308,12 @@ def sign_out():
     # Clear the session
     session.clear()
     
-    # Clear any Flask-specific cookies
-    response = jsonify({'status': 'success', 'message': 'Signed out successfully'})
-    response.set_cookie('session', '', expires=0)
+    # Prepare a response that clears all cookies
+    response = make_response(jsonify({'status': 'success', 'message': 'Signed out successfully'}))
+    
+    # Clear all cookies set by the application
+    for cookie in request.cookies:
+        response.delete_cookie(cookie)
     
     return response
 
