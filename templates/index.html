@@ -84,6 +84,10 @@
             </div>
         </div>
 
+        <div class="bg-blue-100 border-l-4 border-blue-500 text-blue-700 p-4 mt-4" role="alert">
+            <p class="font-bold">Limited Use Disclosure</p>
+            <p>YouTube Marketer's use and transfer to any other app of information received from Google APIs will adhere to the <a href="https://developers.google.com/terms/api-services-user-data-policy" class="underline">Google API Services User Data Policy</a>, including the Limited Use requirements.</p>
+        </div>
         <div id="results" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8"></div>
         <footer class="mt-12 py-4 bg-gray-200">
             <div class="container mx-auto px-4 text-center">
@@ -259,7 +263,7 @@ function displayResults(items) {
                                 </a>
                             </h3>
                             <p class="text-gray-600 text-sm mb-4">${item.snippet.description}</p>
-                            <button onclick="addComment('${item.id.videoId}')" class="bg-secondary text-white px-4 py-2 rounded hover:bg-primary transition duration-300">Add Random Comment</button>
+                            <button onclick="addComment('${item.id.videoId}')" class="bg-secondary text-white px-4 py-2 rounded hover:bg-primary transition duration-300">View Channel then add comment</button>
                             <p id="comment-status-${item.id.videoId}" class="mt-2 text-sm text-gray-500"></p>
                         </div>
                     `;
