@@ -74,7 +74,7 @@
                 <nav>
                     <a href="#" class="hover:text-accent transition duration-300">Home</a>
                     <a href="{{ url_for('privacy') }}" class="ml-4 hover:text-accent transition duration-300">Privacy Policy</a>
-                    <button id="signOutButton" onclick="signOut()" class="ml-4 bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600 transition duration-300 hidden">Sign Out</button>
+                    <button id="signOutButton" onclick="signOut()" class="ml-4 bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600 transition duration-300">Sign Out</button>
 
                 </nav>
             </div>
@@ -383,12 +383,10 @@
                 axios.get('/auth_status')
                     .then(function (response) {
                         updateSearchButton(response.data.authenticated);
-                        updateSignOutButton(response.data.authenticated);
                     })
                     .catch(function (error) {
                         console.error('Error checking auth status:', error);
                         updateSearchButton(false);
-                        updateSignOutButton(false);
                     });
             }
 
@@ -408,11 +406,7 @@
                 }
             }
 
-            function updateSignOutButton(authenticated) {
-                const signOutButton = document.getElementById('signOutButton');
-                signOutButton.style.display = authenticated ? 'inline-block' : 'none';
-            }
-
+            
             window.handleSearch = function() {
                 axios.get('/auth_status')
                     .then(function (response) {
