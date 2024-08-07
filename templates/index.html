@@ -136,9 +136,10 @@
                 © 2024 Comment Marketer. All rights reserved.
             </p>
             <a href="{{ url_for('interaction_history') }}" class="px-4 py-2 rounded-lg button-style hover:bg-secondary transition duration-300 font-semibold text-dark mr-4">Interaction History</a>
-            <button onclick="signOut()" class="px-4 py-2 rounded-lg button-style hover:bg-secondary transition duration-300 font-semibold text-dark">Sign Out</button>
+            <button id="signOutButton" onclick="signOut()" class="px-4 py-2 rounded-lg button-style hover:bg-secondary transition duration-300 font-semibold text-dark hidden">Sign Out</button>
         </div>
     </footer>
+    
     </body>
     </html>
 
@@ -362,60 +363,75 @@
     }
 
     function checkAuthStatus() {
-                axios.get('/auth_status')
-                    .then(function (response) {
-                        updateSearchButton(response.data.authenticated);
-                    })
-                    .catch(function (error) {
-                        console.error('Error checking auth status:', error);
-                        updateSearchButton(false);
-                    });
-            }
+        axios.get('/auth_status')
+            .then(function (response) {
+                updateSearchButton(response.data.authenticated);
+                updateSignOutButton(response.data.authenticated);
+            })
+            .catch(function (error) {
+                console.error('Error checking auth status:', error);
+                updateSearchButton(false);
+                updateSignOutButton(false);
+            });
+    }
 
-            function updateSearchButton(authenticated) {
-                const searchButton = document.getElementById('searchButton');
-                if (searchButton) {
-                    if (authenticated) {
-                        searchButton.textContent = 'Search';
-                        searchButton.onclick = initiateSearch;
-                    } else {
-                        searchButton.textContent = 'Sign in with Google';
-                        searchButton.onclick = handleSearch;
-                    }
+    function updateSearchButton(authenticated) {
+        const searchButton = document.getElementById('searchButton');
+        if (searchButton) {
+            if (authenticated) {
+                searchButton.textContent = 'Search';
+                searchButton.onclick = initiateSearch;
+            } else {
+                searchButton.textContent = 'Sign in with Google';
+                searchButton.onclick = handleSearch;
+            }
+        } else {
+            console.error('Search button not found');
+        }
+    }
+
+
+    
+    window.handleSearch = function() {
+        axios.get('/auth_status')
+            .then(function (response) {
+                if (response.data.authenticated) {
+                    initiateSearch();
                 } else {
-                    console.error('Search button not found');
+                    window.location.href = '/authorize';
                 }
+            })
+            .catch(function (error) {
+                console.error('Error checking auth status:', error);
+                window.location.href = '/authorize';
+            });
+    }
+    window.signOut = function() {
+        axios.post('/sign_out')
+            .then(function () {
+                updateSearchButton(false);
+                updateSignOutButton(false);
+                showError('searchError', 'You have been signed out. Please sign in again.');
+                // Reload the page to ensure a clean state
+                window.location.reload();
+            })
+            .catch(function (error) {
+                console.error('Error signing out:', error);
+                showError('searchError', 'An error occurred while signing out. Please try again.');
+            });
+    }
+    function updateSignOutButton(authenticated) {
+        const signOutButton = document.getElementById('signOutButton');
+        if (signOutButton) {
+            if (authenticated) {
+                signOutButton.classList.remove('hidden');
+            } else {
+                signOutButton.classList.add('hidden');
             }
-
-
-            
-            window.handleSearch = function() {
-                axios.get('/auth_status')
-                    .then(function (response) {
-                        if (response.data.authenticated) {
-                            initiateSearch();
-                        } else {
-                            window.location.href = '/authorize';
-                        }
-                    })
-                    .catch(function (error) {
-                        console.error('Error checking auth status:', error);
-                        window.location.href = '/authorize';
-                    });
-            }
-            window.signOut = function() {
-                axios.post('/sign_out')
-                    .then(function () {
-                        updateSearchButton(false);
-                        showError('searchError', 'You have been signed out. Please sign in again.');
-                        // Reload the page to ensure a clean state
-                        window.location.reload();
-                    })
-                    .catch(function (error) {
-                        console.error('Error signing out:', error);
-                        showError('searchError', 'An error occurred while signing out. Please try again.');
-                    });
-            }
+        } else {
+            console.error('Sign out button not found');
+        }
+    }
 
     // Load comments when the page loads
     checkAuthStatus();
