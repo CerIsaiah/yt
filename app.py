@@ -84,10 +84,28 @@ class YoutubeApi:
                     }
                 }
             ).execute()
+            print(self.connection.commentThreads())
             return True
         except HttpError as e:
             print(f"An error occurred: {e}")
             return False
+    #Retunrs a list of comments that match ur specification
+    def get_comment_threads(self, video_id, search):
+        results = self.connection.commentThreads().list(
+            part="snippet",
+            videoId=video_id,
+            textFormat="plainText",
+            searchTerms=search,
+            maxResults=10,
+        ).execute()
+
+        for item in results["items"]:
+            comment = item["snippet"]["topLevelComment"]
+            author = comment["snippet"]["authorDisplayName"]
+            text = comment["snippet"]["textDisplay"]
+            print(author, text)
+
+        return results["items"]
 
 def load_user_comments(user_id):
     if os.path.exists(COMMENTS_FILE):
@@ -105,11 +123,17 @@ def save_user_comments(user_id, comments):
     with open(COMMENTS_FILE, 'w') as file:
         json.dump(all_comments, file)
 
-@app.before_request
-def before_request():
-    session.permanent = True
-    if 'user_id' not in session:
-        session['user_id'] = str(random.randint(1000000, 9999999))
+@app.route('/')
+def index():
+    return render_template('index.html')
+
+def get_youtube_api():
+    if 'credentials' not in session:
+        return None
+    credentials = Credentials(**session['credentials'])
+    if not credentials or not credentials.valid:
+        return None
+    return YoutubeApi(credentials)
 
 def credentials_to_dict(credentials):
     return {
@@ -121,59 +145,44 @@ def credentials_to_dict(credentials):
         'scopes': credentials.scopes
     }
 
-@app.route('/')
-def index():
-    return render_template('index.html')
+#################################################################
+@app.route('/comment', methods=['POST'])
+@limiter.limit("7 per minute")
+def comment():
+    youtube_api = get_youtube_api()
+    if not youtube_api:
+        return jsonify({'error': 'Not authenticated. Please authorize first.'}), 401
 
-# Update the authorize and oauth2callback functions
-@app.route('/authorize')
-def authorize():
-    flow = Flow.from_client_config(
-        CLIENT_CONFIG,
-        scopes=SCOPES,
-        redirect_uri=url_for('oauth2callback', _external=True)
-    )
-    authorization_url, state = flow.authorization_url(
-        access_type='offline',
-        include_granted_scopes='true',
-        prompt='select_account'  # This forces Google to show the account selection screen
-    )
-    session['state'] = state
-    return redirect(authorization_url)
+    user_id = session.get('user_id')
+    if not user_id:
+        return jsonify({'error': 'User not authenticated'}), 401
 
-@app.route('/oauth2callback')
-def oauth2callback():
+    video_id = request.form.get('video_id')
+    if not video_id:
+        return jsonify({'error': 'No video ID provided'}), 400
+    
+    user_comments = load_user_comments(user_id)
+    if not user_comments:
+        return jsonify({'error': 'You have no comments to send'}), 400
+    
+    random_comment = random.choice(user_comments)
     try:
-        flow = Flow.from_client_config(
-            CLIENT_CONFIG,
-            scopes=SCOPES,
-            state=session['state']
-        )
-        flow.redirect_uri = url_for('oauth2callback', _external=True)
 
-        authorization_response = request.url
-        flow.fetch_token(authorization_response=authorization_response)
 
-        credentials = flow.credentials
-        session['credentials'] = credentials_to_dict(credentials)
-        return redirect(url_for('index'))
-    except Exception as e:
-        print(f"OAuth callback error: {str(e)}")
-        return redirect(url_for('reauth'))
+        success = youtube_api.add_comment(video_id, random_comment)
+        #load_comments = youtube_api.get_comment_threads(video_id, "disrespectful")
+        if success:
+            return jsonify({'status': 'success', 'comment': random_comment})
+        else:
+            return jsonify({'error': 'Unable to post comment. Please check video permissions.'}), 403
+    except HttpError as e:
+        if e.resp.status == 401:
+            # Clear session if unauthorized
+            session.clear()
+            return jsonify({'error': 'Authentication failed', 'redirect': url_for('authorize')}), 401
+        error_message = e.error_details[0]['message'] if e.error_details else str(e)
+        return jsonify({'error': f'YouTube API error: {error_message}'}), e.resp.status
 
-@app.route('/clear')
-def clear_credentials():
-    if 'credentials' in session:
-        del session['credentials']
-    return redirect(url_for('index'))
-
-def get_youtube_api():
-    if 'credentials' not in session:
-        return None
-    credentials = Credentials(**session['credentials'])
-    if not credentials or not credentials.valid:
-        return None
-    return YoutubeApi(credentials)
 
 @app.route('/get_comments', methods=['GET'])
 def get_comments():
@@ -232,6 +241,7 @@ def search():
     
     try:
         results = youtube_api.make_search(query)
+        #print(results)
         if results is None:
             return jsonify({'error': 'An error occurred while searching'}), 500
         return jsonify(results)
@@ -243,41 +253,53 @@ def search():
         print(f"Search error: {str(e)}")
         return jsonify({'error': 'An error occurred while searching'}), 500
 
-# Update the comment function to handle authentication errors
-@app.route('/comment', methods=['POST'])
-@limiter.limit("7 per minute")
-def comment():
-    youtube_api = get_youtube_api()
-    if not youtube_api:
-        return jsonify({'error': 'Not authenticated. Please authorize first.'}), 401
+###########################################################
+@app.route('/authorize')
+def authorize():
+    flow = Flow.from_client_config(
+        CLIENT_CONFIG,
+        scopes=SCOPES,
+        redirect_uri=url_for('oauth2callback', _external=True)
+    )
+    authorization_url, state = flow.authorization_url(
+        access_type='offline',
+        include_granted_scopes='true',
+        prompt='select_account'  # This forces Google to show the account selection screen
+    )
+    session['state'] = state
+    return redirect(authorization_url)
 
-    user_id = session.get('user_id')
-    if not user_id:
-        return jsonify({'error': 'User not authenticated'}), 401
-
-    video_id = request.form.get('video_id')
-    if not video_id:
-        return jsonify({'error': 'No video ID provided'}), 400
-    
-    user_comments = load_user_comments(user_id)
-    if not user_comments:
-        return jsonify({'error': 'No comments available'}), 400
-    
-    random_comment = random.choice(user_comments)
+@app.route('/oauth2callback')
+def oauth2callback():
     try:
-        success = youtube_api.add_comment(video_id, random_comment)
-        if success:
-            return jsonify({'status': 'success', 'comment': random_comment})
-        else:
-            return jsonify({'error': 'Unable to post comment. Please check video permissions.'}), 403
-    except HttpError as e:
-        if e.resp.status == 401:
-            # Clear session if unauthorized
-            session.clear()
-            return jsonify({'error': 'Authentication failed', 'redirect': url_for('authorize')}), 401
-        error_message = e.error_details[0]['message'] if e.error_details else str(e)
-        return jsonify({'error': f'YouTube API error: {error_message}'}), e.resp.status
+        flow = Flow.from_client_config(
+            CLIENT_CONFIG,
+            scopes=SCOPES,
+            state=session['state']
+        )
+        flow.redirect_uri = url_for('oauth2callback', _external=True)
 
+        authorization_response = request.url
+        flow.fetch_token(authorization_response=authorization_response)
+
+        credentials = flow.credentials
+        session['credentials'] = credentials_to_dict(credentials)
+        return redirect(url_for('index'))
+    except Exception as e:
+        print(f"OAuth callback error: {str(e)}")
+        return redirect(url_for('reauth'))
+
+@app.before_request
+def before_request():
+    session.permanent = True
+    if 'user_id' not in session:
+        session['user_id'] = str(random.randint(1000000, 9999999))
+
+@app.route('/clear')
+def clear_credentials():
+    if 'credentials' in session:
+        del session['credentials']
+    return redirect(url_for('index'))
 
 @app.route('/reauth')
 def reauth():
@@ -287,7 +309,7 @@ def reauth():
 @app.errorhandler(429)
 def ratelimit_handler(e):
     return jsonify({'error': 'Rate limit exceeded'}), 429
-
+#############################################################
 @app.route('/privacy-policy')
 def privacy():
     return render_template('privacy-policy.html')
@@ -333,6 +355,7 @@ def auth_status():
                     return jsonify({'authenticated': False})
             return jsonify({'authenticated': True})
     return jsonify({'authenticated': False})
+####################################
 
 if __name__ == '__main__':
     os.environ['OAUTHLIB_INSECURE_TRANSPORT'] = '1'

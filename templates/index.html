@@ -11,152 +11,111 @@
             theme: {
                 extend: {
                     colors: {
-                        primary: '#3B82F6',
-                        secondary: '#1D4ED8',
-                        accent: '#60A5FA',
+                        dark: '#1a1b26',
+                        light: '#a9b1d6',
+                        primary: '#7aa2f7',
+                        secondary: '#2ac3de',
+                        boxBg: '#24283b',
                     }
                 }
             }
         }
     </script>
     <style>
-        @keyframes pulse {
-            0%, 100% { opacity: 1; }
-            50% { opacity: .5; }
+        body {
+            background-color: #1a1b26;
+            color: #a9b1d6;
         }
-        .pulse {
-            animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        .input-style {
+            background-color: #24283b;
+            color: #a9b1d6;
+            border: 1px solid #414868;
         }
-        .google-icon {
-            margin-right: 8px;
+        .button-style {
+            background-color: #7aa2f7;
+            color: #1a1b26;
+        }
+        .box-style {
+            background-color: #24283b;
+            border: 1px solid #414868;
+        }
+        .gradient-text {
+            background: linear-gradient(45deg, #7aa2f7, #2ac3de);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
         }
     </style>
 </head>
-<body class="bg-gray-50 min-h-screen">
-    <!DOCTYPE html>
-    <html lang="en">
-    <head>
-        <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Comment Marketer</title>
-        <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
-        <script src="https://cdn.tailwindcss.com"></script>
-        <script>
-            tailwind.config = {
-                theme: {
-                    extend: {
-                        colors: {
-                            primary: '#3B82F6',
-                            secondary: '#1D4ED8',
-                            accent: '#60A5FA',
-                        }
-                    }
-                }
-            }
-        </script>
-        <style>
-            @keyframes pulse {
-                0%, 100% { opacity: 1; }
-                50% { opacity: .5; }
-            }
-            .pulse {
-                animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
-            }
-            .google-icon {
-                transition: opacity 0.3s ease-in-out;
-            }
-        </style>
-    </head>
-    <body class="bg-gray-50 min-h-screen flex flex-col">
-        <header class="bg-primary text-white py-4 shadow-md">
-            <div class="container mx-auto px-4 flex justify-between items-center">
-                <h1 class="text-3xl font-bold">Comment Marketer</h1>
-                <nav>
-                    <a href="#" class="hover:text-accent transition duration-300">Home</a>
-                    <a href="{{ url_for('privacy') }}" class="ml-4 hover:text-accent transition duration-300">Privacy Policy</a>
-                    <button id="signOutButton" onclick="signOut()" class="ml-4 bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600 transition duration-300">Sign Out</button>
+<body class="min-h-screen flex flex-col">
+    <main class="flex-grow container mx-auto px-4 py-8">
+        <div class="text-center mb-8">
+            <h1 class="text-7xl font-bold mb-4 text-white">Do You Need To <span class="gradient-text">Market Your App?</span></h1>
+            <h2 class="text-5xl font-bold  text-primary mb-6"><span class="gradient-text">Use Comment Marketer! </span></h2>
+            <h2 class="text-3xl font-bold mb-6"><span class="gradient-text">Promote your service on targeted videos</span> via your Youtube Account</h2>
+            
+            <h5 class="text-1l mb-8">Disclaimer: While in development, do not spam or misuse comment feature. Use a side Youtube account if you plan to</h5>
+        </div>
 
-                </nav>
-            </div>
-        </header>
-    
-        <main class="flex-grow container mx-auto px-4 py-8">
-            <h1 class="text-5xl font-bold text-center text-gray-900 mb-4">Want to Market your App?</h1>
-            <h2 class="text-4xl font-bold text-center text-primary mb-4">Advertise with our Free AI Commentor via Youtube!</h2>
-            <h3 class="text-3xl font-bold text-center text-gray-900 mb-8">To Comment on Videos in Your Niche</h3>
-            
-            <div class="mb-12">
-                <div class="flex max-w-3xl mx-auto">
-                    <input type="text" id="searchQuery" placeholder="Videos you want to comment on" class="flex-grow px-6 py-4 rounded-l-lg border-2 border-primary focus:outline-none focus:border-secondary text-xl">
-                    <button id="searchButton" onclick="handleSearch()" class="bg-primary text-white px-10 py-4 rounded-r-lg hover:bg-secondary transition duration-300 text-xl font-semibold flex items-center justify-center min-w-[200px]">
-                        <svg id="googleIcon" class="google-icon mr-2" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="24px" height="24px">
-                            <path fill="#FFC107" d="M43.611,20.083H42V20H24v8h11.303c-1.649,4.657-6.08,8-11.303,8c-6.627,0-12-5.373-12-12c0-6.627,5.373-12,12-12c3.059,0,5.842,1.154,7.961,3.039l5.657-5.657C34.046,6.053,29.268,4,24,4C12.955,4,4,12.955,4,24c0,11.045,8.955,20,20,20c11.045,0,20-8.955,20-20C44,22.659,43.862,21.35,43.611,20.083z"/>
-                            <path fill="#FF3D00" d="M6.306,14.691l6.571,4.819C14.655,15.108,18.961,12,24,12c3.059,0,5.842,1.154,7.961,3.039l5.657-5.657C34.046,6.053,29.268,4,24,4C16.318,4,9.656,8.337,6.306,14.691z"/>
-                            <path fill="#4CAF50" d="M24,44c5.166,0,9.86-1.977,13.409-5.192l-6.19-5.238C29.211,35.091,26.715,36,24,36c-5.202,0-9.619-3.317-11.283-7.946l-6.522,5.025C9.505,39.556,16.227,44,24,44z"/>
-                            <path fill="#1976D2" d="M43.611,20.083H42V20H24v8h11.303c-0.792,2.237-2.231,4.166-4.087,5.571c0.001-0.001,0.002-0.001,0.003-0.002l6.19,5.238C36.971,39.205,44,34,44,24C44,22.659,43.862,21.35,43.611,20.083z"/>
-                        </svg>
-                        <span id="searchButtonText">Sign in with Google</span>
-                    </button>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div class="box-style rounded-lg shadow-lg p-6">
+                <h2 class="text-2xl font-semibold mb-4 gradient-text text-center">Search for Your Niche's Videos</h2>
+                <div class="flex">
+                    <input type="text" id="searchQuery" placeholder="Videos you want to comment on" class="flex-grow px-4 py-2 rounded-l-lg input-style focus:outline-none focus:ring-2 focus:ring-primary">
+                    <button id="searchButton" onclick="handleSearch()" class="px-6 py-2 rounded-r-lg button-style hover:bg-secondary transition duration-300 font-semibold">Search</button>
                 </div>
-                <p id="searchError" class="mt-2 text-red-500 text-center hidden"></p>
+                <p id="searchError" class="mt-2 text-red-500 hidden"></p>
             </div>
-    
-            <h2 class="text-3xl font-bold text-center text-gray-900 mb-8">How It Works</h2>
-            
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-8 mb-12">
-                    <div class="text-center">
-                        <div class="text-4xl text-primary mb-4">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12 mx-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                            </svg>
-                        </div>
-                        <h3 class="text-xl font-semibold mb-2">Create Your Comments</h3>
-                        <p class="text-gray-600">Add custom comments to use on videos.</p>
-                    </div>
-                    <div class="text-center">
-                        <div class="text-4xl text-primary mb-4">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12 mx-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                            </svg>
-                        </div>
-                        <h3 class="text-xl font-semibold mb-2">Explore Videos</h3>
-                        <p class="text-gray-600">Search and browse YouTube videos.</p>
-                    </div>
-                    <div class="text-center">
-                        <div class="text-4xl text-primary mb-4">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12 mx-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-                            </svg>
-                        </div>
-                        <h3 class="text-xl font-semibold mb-2">Comment Automatically</h3>
-                        <p class="text-gray-600">Add comments to videos with one click.</p>
-                    </div>
-                <!-- How It Works content -->
-            </div>
-    
-            <div class="bg-white rounded-lg shadow-lg p-6 mb-12">
-                <h2 class="text-2xl font-semibold text-gray-900 mb-4">Type Comments to Post</h2>
+
+            <div class="box-style rounded-lg shadow-lg p-6">
+                <h2 class="text-2xl font-semibold mb-4 gradient-text text-center">Create List of Comments to Post</h2>
                 <ul id="commentList" class="space-y-2 mb-4"></ul>
                 <div class="flex">
-                    <input type="text" id="newComment" placeholder="Add a new comment" class="flex-grow px-4 py-2 rounded-l-lg border-2 border-accent focus:outline-none focus:border-primary">
-                    <button onclick="addCustomComment()" class="bg-accent text-white px-6 py-2 rounded-r-lg hover:bg-primary transition duration-300 font-semibold">Add</button>
+                    <input type="text" id="newComment" placeholder="Add a new comment" class="flex-grow px-4 py-2 rounded-l-lg input-style focus:outline-none focus:ring-2 focus:ring-primary">
+                    <button onclick="addCustomComment()" class="px-6 py-2 rounded-r-lg button-style hover:bg-secondary transition duration-300 font-semibold">Add</button>
                 </div>
             </div>
-    
-            <div id="results" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-12"></div>
-        </main>
-    
-        <footer class="mt-auto py-4 bg-gray-200">
-            <div class="container mx-auto px-4">
-                <div class="bg-blue-100 border-l-4 border-blue-500 text-blue-700 p-4 mb-4" role="alert">
-                    <p class="font-bold">Limited Use Disclosure</p>
-                    <p>Comment Marketer's use and transfer to any other app of information received from Google APIs will adhere to the <a href="https://developers.google.com/terms/api-services-user-data-policy" class="underline">Google API Services User Data Policy</a>, including the Limited Use requirements.</p>
-                </div>
-                <div class="text-center">
-                    <a href="{{ url_for('privacy') }}" class="text-blue-500 hover:underline">Privacy Policy</a>
-                </div>
+
+            <div class="box-style rounded-lg shadow-lg p-6">
+                <h2 class="text-2xl font-semibold mb-4 gradient-text">Tips to Find Your Niche</h2>
+                <ul class="list-disc list-inside space-y-1 text-sm">
+                    <li>Examples to Search include:</li>
+                    <li>Search for "best productivity apps 2024" to market productivity apps.
+                    </li>
+                    <li>Try "how to stay organized" to target productivity tips videos.
+                    </li>
+                    <li>Try "top fitness apps" if your app is health-related</li>
+                </ul>
             </div>
-        </footer>
+
+            <div class="box-style rounded-lg shadow-lg p-6">
+                <h2 class="text-2xl font-semibold mb-4 gradient-text">Effective Comment Strategies / Examples</h2>
+                <ul class="list-disc list-inside space-y-1 text-sm">
+                    <li>Examples to Comment include:</li>
+                    <li>Share how your app solves a problem mentioned in the video</li>
+                    <li>"Thanks for the tips! If anyone is looking for an app that [solves related issue], check out [My App]."</li>
+                    <li>"Great video! I found that using [M App] really helped me with [specific problem]."</li>
+                </ul>
+            </div>
+        </div>
+    </main>
+
+    <div class="container mx-auto px-4 mt-8">
+        <h2 class="text-2xl font-semibold mb-4 gradient-text text-center">Search Results</h2>
+        <div id="results" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"></div>
+    </div>
+
+    <footer class="mt-12 py-4 bg-boxBg text-sm">
+        <div class="container mx-auto px-16">
+            <p class="text-center text-gray-400">
+                <a href="{{ url_for('privacy') }}" class="text-primary hover:underline">Privacy Policy</a> |
+                Comment Marketer adheres to the <a href="https://developers.google.com/terms/api-services-user-data-policy" class="underline">Google API Services User Data Policy</a>
+            </p>
+            <p class="text-center text-gray-500 mt-2">
+                © 2024 Comment Marketer. All rights reserved.
+            </p>
+        </div>
+    </footer>
     </body>
     </html>
 
@@ -327,7 +286,7 @@
                         </a>
                     </h3>
                     <p class="text-gray-600 text-sm mb-4">${item.snippet.description}</p>
-                    <button onclick="addComment('${item.id.videoId}')" class="bg-secondary text-white px-4 py-2 rounded hover:bg-primary transition duration-300">View Channel then add comment</button>
+                    <button onclick="addComment('${item.id.videoId}')" class="bg-secondary text-white px-4 py-2 rounded hover:bg-primary transition duration-300 text-center">Add your comment</button>
                     <p id="comment-status-${item.id.videoId}" class="mt-2 text-sm text-gray-500"></p>
                 </div>
             `;
