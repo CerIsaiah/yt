@@ -57,7 +57,7 @@ class YoutubeApi:
     def init_connection(self, credentials):
         return build(API_SERVICE_NAME, API_VERSION, credentials=credentials)
 
-    def make_search(self, query, max_results=10):
+    def make_search(self, query, max_results=20):
         try:
             return self.connection.search().list(
                 q=query,
