@@ -62,7 +62,7 @@
                 <h2 class="text-2xl font-semibold mb-4 gradient-text text-center">Search for Your Niche's Videos</h2>
                 <div class="flex">
                     <input type="text" id="searchQuery" placeholder="Videos you want to comment on" class="flex-grow px-4 py-2 rounded-l-lg input-style focus:outline-none focus:ring-2 focus:ring-primary">
-                    <button id="searchButton" onclick="handleSearch()" class="px-6 py-2 rounded-r-lg button-style hover:bg-secondary transition duration-300 font-semibold">Search</button>
+                    <button id="searchButton searchButtonText" onclick="handleSearch()" class="px-6 py-2 rounded-r-lg button-style hover:bg-secondary transition duration-300 font-semibold">Search</button>
                 </div>
                 <p id="searchError" class="mt-2 text-red-500 hidden"></p>
             </div>
@@ -105,15 +105,16 @@
         <div id="results" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"></div>
     </div>
 
-    <footer class="mt-12 py-4 bg-boxBg text-sm">
-        <div class="container mx-auto px-16">
-            <p class="text-center text-gray-400">
+    <footer class="mt-6 py-4 bg-boxBg text-sm">
+        <div class="container mx-auto px-4 flex flex-col items-center">
+            <p class="text-center text-gray-400 mb-2">
                 <a href="{{ url_for('privacy') }}" class="text-primary hover:underline">Privacy Policy</a> |
                 Comment Marketer adheres to the <a href="https://developers.google.com/terms/api-services-user-data-policy" class="underline">Google API Services User Data Policy</a>
             </p>
-            <p class="text-center text-gray-500 mt-2">
+            <p class="text-center text-gray-500 mb-4">
                 © 2024 Comment Marketer. All rights reserved.
             </p>
+            <button onclick="signOut()" class="px-4 py-2 rounded-lg button-style hover:bg-secondary transition duration-300 font-semibold text-dark">Sign Out</button>
         </div>
     </footer>
     </body>
@@ -352,15 +353,11 @@
             function updateSearchButton(authenticated) {
                 const searchButton = document.getElementById('searchButton');
                 const searchButtonText = document.getElementById('searchButtonText');
-                const googleIcon = document.getElementById('googleIcon');
-
                 if (authenticated) {
                     searchButtonText.textContent = 'Search';
-                    googleIcon.style.opacity = '0';
                     searchButton.onclick = initiateSearch;
                 } else {
                     searchButtonText.textContent = 'Sign in with Google';
-                    googleIcon.style.opacity = '1';
                     searchButton.onclick = handleSearch;
                 }
             }
