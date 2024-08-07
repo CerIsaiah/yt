@@ -1,6 +1,7 @@
 from flask import Flask, render_template, request, jsonify, session, redirect, url_for, make_response
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
+from flask_sqlalchemy import SQLAlchemy
 from googleapiclient.discovery import build
 from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import Flow
@@ -8,7 +9,7 @@ from googleapiclient.errors import HttpError
 import os
 import json
 import random
-from datetime import timedelta
+from datetime import timedelta, datetime
 from dotenv import load_dotenv
 from google.auth.transport.requests import Request
 import requests 
@@ -29,7 +30,6 @@ limiter = Limiter(
 
 COMMENTS_FILE = "user_comments.json"
 
-
 CLIENT_CONFIG = {
     "web": {
         "client_id": os.getenv('GOOGLE_CLIENT_ID'),
@@ -42,13 +42,23 @@ CLIENT_CONFIG = {
     }
 }
 
-
-
 # OAuth 2.0 configuration
-CLIENT_SECRETS_FILE = "client_secrets.json"
 SCOPES = ["https://www.googleapis.com/auth/youtube.force-ssl", "https://www.googleapis.com/auth/youtube.readonly", "https://www.googleapis.com/auth/youtube"]
 API_SERVICE_NAME = "youtube"
 API_VERSION = "v3"
+
+# Database configuration
+app.config['SQLALCHEMY_DATABASE_URI'] =  os.getenv("DB_STRING")
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+db = SQLAlchemy(app)
+
+# Define UserInteraction model
+class UserInteraction(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.String(50), nullable=False)
+    video_id = db.Column(db.String(50), nullable=False)
+    interaction_type = db.Column(db.String(20), nullable=False)
+    timestamp = db.Column(db.DateTime, default=datetime.utcnow)
 
 class YoutubeApi:
     def __init__(self, credentials):
@@ -59,12 +69,25 @@ class YoutubeApi:
 
     def make_search(self, query, max_results=20):
         try:
-            return self.connection.search().list(
+            results = self.connection.search().list(
                 q=query,
                 maxResults=max_results,
                 part="snippet",
                 type="video"
             ).execute()
+
+            # Filter out videos the user has interacted with
+            user_id = session.get('user_id')
+            interacted_videos = UserInteraction.query.filter_by(user_id=user_id).with_entities(UserInteraction.video_id).all()
+            interacted_video_ids = [video.video_id for video in interacted_videos]
+
+            filtered_results = [
+                video for video in results.get('items', [])
+                if video['id']['videoId'] not in interacted_video_ids
+            ]
+
+            results['items'] = filtered_results
+            return results
         except HttpError as e:
             print(f"An error occurred: {e}")
             return None
@@ -84,12 +107,18 @@ class YoutubeApi:
                     }
                 }
             ).execute()
-            print(self.connection.commentThreads())
+            
+            # Record the interaction
+            user_id = session.get('user_id')
+            interaction = UserInteraction(user_id=user_id, video_id=video_id, interaction_type='comment')
+            db.session.add(interaction)
+            db.session.commit()
+
             return True
         except HttpError as e:
             print(f"An error occurred: {e}")
             return False
-    #Retunrs a list of comments that match ur specification
+
     def get_comment_threads(self, video_id, search):
         results = self.connection.commentThreads().list(
             part="snippet",
@@ -145,7 +174,6 @@ def credentials_to_dict(credentials):
         'scopes': credentials.scopes
     }
 
-#################################################################
 @app.route('/comment', methods=['POST'])
 @limiter.limit("7 per minute")
 def comment():
@@ -167,22 +195,17 @@ def comment():
     
     random_comment = random.choice(user_comments)
     try:
-
-
         success = youtube_api.add_comment(video_id, random_comment)
-        #load_comments = youtube_api.get_comment_threads(video_id, "disrespectful")
         if success:
             return jsonify({'status': 'success', 'comment': random_comment})
         else:
             return jsonify({'error': 'Unable to post comment. Please check video permissions.'}), 403
     except HttpError as e:
         if e.resp.status == 401:
-            # Clear session if unauthorized
             session.clear()
             return jsonify({'error': 'Authentication failed', 'redirect': url_for('authorize')}), 401
         error_message = e.error_details[0]['message'] if e.error_details else str(e)
         return jsonify({'error': f'YouTube API error: {error_message}'}), e.resp.status
-
 
 @app.route('/get_comments', methods=['GET'])
 def get_comments():
@@ -241,19 +264,16 @@ def search():
     
     try:
         results = youtube_api.make_search(query)
-        #print(results)
         if results is None:
             return jsonify({'error': 'An error occurred while searching'}), 500
         return jsonify(results)
     except HttpError as e:
         if e.resp.status == 401:
-            # Clear session if unauthorized
             session.clear()
             return jsonify({'error': 'Authentication failed', 'redirect': url_for('authorize')}), 401
         print(f"Search error: {str(e)}")
         return jsonify({'error': 'An error occurred while searching'}), 500
 
-###########################################################
 @app.route('/authorize')
 def authorize():
     flow = Flow.from_client_config(
@@ -264,7 +284,7 @@ def authorize():
     authorization_url, state = flow.authorization_url(
         access_type='offline',
         include_granted_scopes='true',
-        prompt='select_account'  # This forces Google to show the account selection screen
+        prompt='select_account'
     )
     session['state'] = state
     return redirect(authorization_url)
@@ -309,7 +329,7 @@ def reauth():
 @app.errorhandler(429)
 def ratelimit_handler(e):
     return jsonify({'error': 'Rate limit exceeded'}), 429
-#############################################################
+
 @app.route('/privacy-policy')
 def privacy():
     return render_template('privacy-policy.html')
@@ -320,20 +340,16 @@ def sign_out():
         credentials = Credentials(**session['credentials'])
         if credentials and credentials.valid:
             try:
-                # Revoke the token
                 requests.post('https://oauth2.googleapis.com/revoke',
                     params={'token': credentials.token},
                     headers = {'content-type': 'application/x-www-form-urlencoded'})
             except:
-                pass  # If revoking fails, we'll still clear the session
+                pass
     
-    # Clear the session
     session.clear()
     
-    # Prepare a response that clears all cookies
     response = make_response(jsonify({'status': 'success', 'message': 'Signed out successfully'}))
     
-    # Clear all cookies set by the application
     for cookie in request.cookies:
         response.delete_cookie(cookie)
     
@@ -350,13 +366,57 @@ def auth_status():
                     session['credentials'] = credentials_to_dict(credentials)
                     return jsonify({'authenticated': True})
                 except:
-                    # If refresh fails, we'll sign the user out
                     session.clear()
                     return jsonify({'authenticated': False})
             return jsonify({'authenticated': True})
     return jsonify({'authenticated': False})
-####################################
+
+@app.route('/get_interaction_history')
+def get_interaction_history():
+    user_id = session.get('user_id')
+    if not user_id:
+        return jsonify({'error': 'User not authenticated'}), 401
+    
+    interactions = UserInteraction.query.filter_by(user_id=user_id).order_by(UserInteraction.timestamp.desc()).all()
+    
+    interaction_list = []
+    for interaction in interactions:
+        video_info = get_video_info(interaction.video_id)
+        interaction_list.append({
+            'video_id': interaction.video_id,
+            'video_title': video_info.get('title', 'Unknown Title'),
+            'interaction_type': interaction.interaction_type,
+            'timestamp': interaction.timestamp.isoformat()
+        })
+    
+    return jsonify({'interactions': interaction_list})
+
+def get_video_info(video_id):
+    youtube_api = get_youtube_api()
+    if not youtube_api:
+        return {'title': 'Unknown Title'}
+    
+    try:
+        response = youtube_api.connection.videos().list(
+            part='snippet',
+            id=video_id
+        ).execute()
+        
+        if response['items']:
+            return {'title': response['items'][0]['snippet']['title']}
+        else:
+            return {'title': 'Unknown Title'}
+    except Exception as e:
+        print(f"Error fetching video info: {e}")
+        return {'title': 'Unknown Title'}
+
+@app.route('/interaction_history')
+def interaction_history():
+    return render_template('interaction_history.html')
+
 
 if __name__ == '__main__':
+    with app.app_context():
+        db.create_all()
     os.environ['OAUTHLIB_INSECURE_TRANSPORT'] = '1'
     app.run(debug=True)

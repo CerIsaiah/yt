@@ -75,7 +75,7 @@
             <h2 class="text-5xl font-bold  text-primary mb-6"><span class="gradient-text">Use Comment Marketer! </span></h2>
             <h2 class="text-3xl font-bold mb-6"><span class="gradient-text">Promote your service on targeted videos</span> via your Youtube Account</h2>
             
-            <h5 class="text-1l mb-8">Disclaimer: While this uses the Youtube API, do not spam or misuse comment feature. Use a side Youtube account if you plan to</h5>
+            <h5 class="text-1l mb-8">Disclaimer: While this uses the offical Youtube API, do not spam or misuse comment feature. Use a side Youtube account if you plan to</h5>
         </div>
 
         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -115,7 +115,7 @@
                     <li>Examples to Comment include:</li>
                     <li>Share how your app solves a problem mentioned in the video</li>
                     <li>"Thanks for the tips! If anyone is looking for an app that [solves related issue], check out [My App]."</li>
-                    <li>"Great video! I found that using [M App] really helped me with [specific problem]."</li>
+                    <li>"Great video! I found that using [My App] really helped me with [specific problem]."</li>
                 </ul>
             </div>
         </div>
@@ -135,6 +135,7 @@
             <p class="text-center text-gray-500 mb-4">
                 © 2024 Comment Marketer. All rights reserved.
             </p>
+            <a href="{{ url_for('interaction_history') }}" class="px-4 py-2 rounded-lg button-style hover:bg-secondary transition duration-300 font-semibold text-dark mr-4">Interaction History</a>
             <button onclick="signOut()" class="px-4 py-2 rounded-lg button-style hover:bg-secondary transition duration-300 font-semibold text-dark">Sign Out</button>
         </div>
     </footer>

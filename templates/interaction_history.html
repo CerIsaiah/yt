@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interaction History - Comment Marketer</title>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        dark: '#1a1b26',
+                        light: '#a9b1d6',
+                        primary: '#7aa2f7',
+                        secondary: '#2ac3de',
+                        boxBg: '#24283b',
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            background-color: #1a1b26;
+            color: #a9b1d6;
+        }
+        .input-style {
+            background-color: #24283b;
+            color: #a9b1d6;
+            border: 1px solid #414868;
+        }
+        .button-style {
+            background-color: #7aa2f7;
+            color: #1a1b26;
+        }
+        .box-style {
+            background-color: #24283b;
+            border: 1px solid #414868;
+        }
+        .gradient-text {
+            background: linear-gradient(45deg, #7aa2f7, #2ac3de);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col">
+    <main class="flex-grow container mx-auto px-4 py-8">
+        <h1 class="text-4xl font-bold mb-8 text-center gradient-text">Your Interaction History</h1>
+        
+        <div id="interactionList" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <!-- Interaction items will be dynamically inserted here -->
+        </div>
+    </main>
+
+    <footer class="mt-6 py-4 bg-boxBg text-sm">
+        <div class="container mx-auto px-4 flex justify-center items-center">
+            <a href="{{ url_for('index') }}" class="px-4 py-2 rounded-lg button-style hover:bg-secondary transition duration-300 font-semibold text-dark mr-4">Back to Home</a>
+            <button onclick="signOut()" class="px-4 py-2 rounded-lg button-style hover:bg-secondary transition duration-300 font-semibold text-dark">Sign Out</button>
+        </div>
+    </footer>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            loadInteractionHistory();
+
+            function loadInteractionHistory() {
+                axios.get('/get_interaction_history')
+                    .then(function (response) {
+                        displayInteractions(response.data.interactions);
+                    })
+                    .catch(function (error) {
+                        console.error('Error loading interaction history:', error);
+                        alert('Error loading interaction history. Please try again.');
+                    });
+            }
+
+            function displayInteractions(interactions) {
+                const interactionList = document.getElementById('interactionList');
+                interactionList.innerHTML = '';
+
+                if (interactions.length === 0) {
+                    interactionList.innerHTML = '<p class="col-span-full text-center text-gray-500">No interactions found.</p>';
+                    return;
+                }
+
+                interactions.forEach(interaction => {
+                    const interactionDiv = document.createElement('div');
+                    interactionDiv.className = 'box-style rounded-lg shadow-lg p-6';
+                    interactionDiv.innerHTML = `
+                        <h3 class="text-xl font-semibold mb-2 gradient-text">${interaction.video_title}</h3>
+                        <p class="text-sm mb-2">Interaction: ${interaction.interaction_type}</p>
+                        <p class="text-sm mb-4">Date: ${new Date(interaction.timestamp).toLocaleString()}</p>
+                        <a href="https://www.youtube.com/watch?v=${interaction.video_id}" target="_blank" rel="noopener noreferrer" class="button-style px-4 py-2 rounded-lg hover:bg-secondary transition duration-300 inline-block">View Video</a>
+                    `;
+                    interactionList.appendChild(interactionDiv);
+                });
+            }
+
+            window.signOut = function() {
+                axios.post('/sign_out')
+                    .then(function () {
+                        window.location.href = '/';
+                    })
+                    .catch(function (error) {
+                        console.error('Error signing out:', error);
+                        alert('An error occurred while signing out. Please try again.');
+                    });
+            }
+        });
+    </script>
+</body>
+</html>
