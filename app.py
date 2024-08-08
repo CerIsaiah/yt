@@ -416,7 +416,11 @@ def interaction_history():
 
 
 if __name__ == '__main__':
-    with app.app_context():
-        db.create_all()
+    
     os.environ['OAUTHLIB_INSECURE_TRANSPORT'] = '1'
     app.run(debug=True)
+
+    """
+    with app.app_context():
+        db.create_all()
+    """

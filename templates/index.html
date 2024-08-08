@@ -10,13 +10,13 @@
 
     gtag('config', 'G-T7WFXLSHLH');
     </script>
-        <!-- Google Tag Manager -->
+    <!-- Google Tag Manager -->
     <script>(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
         new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
         j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
         'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
         })(window,document,'script','dataLayer','GTM-PM3PR5TX');</script>
-        <!-- End Google Tag Manager -->
+    <!-- End Google Tag Manager -->
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Comment Marketer</title>
@@ -69,50 +69,57 @@
     height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
     <!-- End Google Tag Manager (noscript) -->
 
+    <!-- New Header -->
+    <header class="bg-boxBg py-4 shadow-md">
+        <div class="container mx-auto px-4">
+            <div class="flex flex-col sm:flex-row justify-between items-center">
+                <h1 class="text-3xl font-bold gradient-text mb-4 sm:mb-0">Comment Marketer</h1>
+                <div class="flex flex-col sm:flex-row items-center space-y-2 sm:space-y-0 sm:space-x-4">
+                    <a href="{{ url_for('interaction_history') }}" class="w-full sm:w-auto px-4 py-2 rounded-lg button-style hover:bg-secondary transition duration-300 font-semibold text-dark text-center">Interaction History</a>
+                    <button id="signInButton" onclick="handleSearch()" class="w-full sm:w-auto px-4 py-2 rounded-lg button-style hover:bg-secondary transition duration-300 font-semibold text-dark">Sign In</button>
+                    <button id="signOutButton" onclick="signOut()" class="w-full sm:w-auto px-4 py-2 rounded-lg button-style hover:bg-secondary transition duration-300 font-semibold text-dark hidden">Sign Out</button>
+                </div>
+            </div>
+        </div>
+    </header>
+
     <main class="flex-grow container mx-auto px-4 py-8">
         <div class="text-center mb-8">
-            <h1 class="text-7xl font-bold mb-4 text-white">Do You Need To <span class="gradient-text">Market Your App?</span></h1>
-            <h2 class="text-5xl font-bold  text-primary mb-6"><span class="gradient-text">Use Comment Marketer! </span></h2>
-            <h2 class="text-3xl font-bold mb-6"><span class="gradient-text">Promote your service on targeted videos</span> via your Youtube Account</h2>
-            
-            <h5 class="text-1l mb-8">Disclaimer: While this uses the offical Youtube API, do not spam or misuse comment feature. Use a side Youtube account if you plan to</h5>
+            <h1 class="text-4xl sm:text-5xl md:text-7xl font-bold mb-4 text-white">Market Your App to <span class="gradient-text">High Intent</span> Customers on Youtube for Free!</h1>
+            <h2 class="text-xl sm:text-2xl md:text-3xl font-bold mb-6"><span class="gradient-text">Promote your service on targeted videos</span> via your Youtube Account</h2>
         </div>
 
         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div class="box-style rounded-lg shadow-lg p-6">
-                <h2 class="text-2xl font-semibold mb-4 gradient-text text-center">Search for Your Niche's Videos</h2>
-                <div class="flex">
-                    <input type="text" id="searchQuery" placeholder="Videos you want to comment on" class="flex-grow px-4 py-2 rounded-l-lg input-style focus:outline-none focus:ring-2 focus:ring-primary">
-                    <button id="searchButton" onclick="handleSearch()" class="px-6 py-2 rounded-r-lg button-style hover:bg-secondary transition duration-300 font-semibold searchButtonText">Search</button>
+            <div class="box-style rounded-lg shadow-lg p-4 sm:p-6">
+                <h2 class="text-xl sm:text-2xl font-semibold mb-4 gradient-text text-center">Search for Your Niche's Videos</h2>
+                <div class="flex flex-col sm:flex-row">
+                    <input type="text" id="searchQuery" placeholder="Videos you want to comment on" class="w-full sm:w-auto flex-grow px-4 py-2 rounded-lg sm:rounded-l-lg sm:rounded-r-none input-style focus:outline-none focus:ring-2 focus:ring-primary mb-2 sm:mb-0">
+                    <button id="searchButton" onclick="handleSearch()" class="w-full sm:w-auto px-4 py-2 rounded-lg sm:rounded-l-none sm:rounded-r-lg button-style hover:bg-secondary transition duration-300 font-semibold searchButtonText">Search</button>
                 </div>
                 <p id="searchError" class="mt-2 text-red-500 hidden"></p>
             </div>
 
-            <div class="box-style rounded-lg shadow-lg p-6">
-                <h2 class="text-2xl font-semibold mb-4 gradient-text text-center">Create List of Comments to Post</h2>
+            <div class="box-style rounded-lg shadow-lg p-4 sm:p-6">
+                <h2 class="text-xl sm:text-2xl font-semibold mb-4 gradient-text text-center">Create List of Comments to Post</h2>
                 <ul id="commentList" class="space-y-2 mb-4"></ul>
-                <div class="flex">
-                    <input type="text" id="newComment" placeholder="Add a new comment" class="flex-grow px-4 py-2 rounded-l-lg input-style focus:outline-none focus:ring-2 focus:ring-primary">
-                    <button onclick="addCustomComment()" class="px-6 py-2 rounded-r-lg button-style hover:bg-secondary transition duration-300 font-semibold">Add</button>
+                <div class="flex flex-col sm:flex-row">
+                    <input type="text" id="newComment" placeholder="Add a new comment" class="w-full sm:w-auto flex-grow px-4 py-2 rounded-lg sm:rounded-l-lg sm:rounded-r-none input-style focus:outline-none focus:ring-2 focus:ring-primary mb-2 sm:mb-0">
+                    <button onclick="addCustomComment()" class="w-full sm:w-auto px-6 py-2 rounded-lg sm:rounded-l-none sm:rounded-r-lg button-style hover:bg-secondary transition duration-300 font-semibold">Add</button>
                 </div>
             </div>
 
-            <div class="box-style rounded-lg shadow-lg p-6">
-                <h2 class="text-2xl font-semibold mb-4 gradient-text">Tips to Find Your Niche</h2>
+            <div class="box-style rounded-lg shadow-lg p-4 sm:p-6">
+                <h2 class="text-xl sm:text-2xl font-semibold mb-4 gradient-text">Tips to Find Your Niche</h2>
                 <ul class="list-disc list-inside space-y-1 text-sm">
-                    <li>Examples to Search include:</li>
-                    <li>Search for "best productivity apps 2024" to market productivity apps.
-                    </li>
-                    <li>Try "how to stay organized" to target productivity tips videos.
-                    </li>
+                    <li>Search for "best productivity apps 2024" to market productivity apps.</li>
+                    <li>Try "how to stay organized" to target productivity tips videos.</li>
                     <li>Try "top fitness apps" if your app is health-related</li>
                 </ul>
             </div>
 
-            <div class="box-style rounded-lg shadow-lg p-6">
-                <h2 class="text-2xl font-semibold mb-4 gradient-text">Effective Comment Strategies / Examples</h2>
+            <div class="box-style rounded-lg shadow-lg p-4 sm:p-6">
+                <h2 class="text-xl sm:text-2xl font-semibold mb-4 gradient-text">Effective Comment Strategies / Examples</h2>
                 <ul class="list-disc list-inside space-y-1 text-sm">
-                    <li>Examples to Comment include:</li>
                     <li>Share how your app solves a problem mentioned in the video</li>
                     <li>"Thanks for the tips! If anyone is looking for an app that [solves related issue], check out [My App]."</li>
                     <li>"Great video! I found that using [My App] really helped me with [specific problem]."</li>
@@ -122,7 +129,7 @@
     </main>
 
     <div class="container mx-auto px-4 mt-8">
-        <h2 class="text-2xl font-semibold mb-4 gradient-text text-center">Search Results</h2>
+        <h2 class="text-xl sm:text-2xl font-semibold mb-4 gradient-text text-center">Search Results</h2>
         <div id="results" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"></div>
     </div>
 
@@ -135,11 +142,8 @@
             <p class="text-center text-gray-500 mb-4">
                 © 2024 Comment Marketer. All rights reserved.
             </p>
-            <a href="{{ url_for('interaction_history') }}" class="px-4 py-2 rounded-lg button-style hover:bg-secondary transition duration-300 font-semibold text-dark mr-4">Interaction History</a>
-            <button id="signOutButton" onclick="signOut()" class="px-4 py-2 rounded-lg button-style hover:bg-secondary transition duration-300 font-semibold text-dark hidden">Sign Out</button>
         </div>
     </footer>
-    
     </body>
     </html>
 
