@@ -13,6 +13,10 @@ from datetime import timedelta, datetime
 from dotenv import load_dotenv
 from google.auth.transport.requests import Request
 import requests 
+from youtube_transcript_api import YouTubeTranscriptApi
+from openai import OpenAI
+from flask_migrate import Migrate
+
 
 # Load environment variables
 load_dotenv()
@@ -51,6 +55,9 @@ API_VERSION = "v3"
 app.config['SQLALCHEMY_DATABASE_URI'] =  os.getenv("DB_STRING")
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db = SQLAlchemy(app)
+migrate = Migrate(app, db)
+
+
 
 # Define UserInteraction model
 class UserInteraction(db.Model):
@@ -59,6 +66,18 @@ class UserInteraction(db.Model):
     video_id = db.Column(db.String(50), nullable=False)
     interaction_type = db.Column(db.String(20), nullable=False)
     timestamp = db.Column(db.DateTime, default=datetime.utcnow)
+
+# Define VideoTranscript model
+class VideoTranscript(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    video_id = db.Column(db.String(50), unique=True, nullable=False)
+    transcript = db.Column(db.Text, nullable=False)
+    summary = db.Column(db.Text)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+
+# OpenAI client
+client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 class YoutubeApi:
     def __init__(self, credentials):
@@ -415,12 +434,62 @@ def interaction_history():
     return render_template('interaction_history.html')
 
 
+@app.route('/get_bulk_transcripts', methods=['POST'])
+@limiter.limit("2 per minute")
+def get_bulk_transcripts():
+    video_ids = request.json.get('video_ids')
+    if not video_ids or not isinstance(video_ids, list):
+        return jsonify({'error': 'Invalid or missing video IDs'}), 400
+
+    results = {}
+    for video_id in video_ids:
+        existing_transcript = VideoTranscript.query.filter_by(video_id=video_id).first()
+        if existing_transcript:
+            results[video_id] = {
+                'summary': existing_transcript.summary
+            }
+        else:
+            try:
+                srt = YouTubeTranscriptApi.get_transcript(video_id)
+                text_list = [i['text'] for i in srt]
+                full_transcript = ' '.join(text_list)
+
+                try:
+                    completion = client.chat.completions.create(
+                        model="gpt-4",
+                        messages=[
+                            {"role": "system", "content": "You are a helpful assistant. Create a bullet point summary of the following transcript:"},
+                            {"role": "user", "content": f"Create a 2 sentence summary of:\n\n{full_transcript[:4000]}"}
+                        ]
+                    )
+                    summary = completion.choices[0].message.content
+                except Exception as e:
+                    print(f"Error generating summary for video {video_id}: {str(e)}")
+                    summary = "Summary generation failed. Please try again later."
+
+                new_transcript = VideoTranscript(video_id=video_id, transcript=full_transcript, summary=summary)
+                db.session.add(new_transcript)
+                db.session.commit()
+
+                results[video_id] = {
+                    'summary': summary
+                }
+            except Exception as e:
+                print(f"Error processing transcript for video {video_id}: {str(e)}")
+                results[video_id] = {
+                    'summary': "No captions available"
+                }
+
+    return jsonify(results)
+
+
+
 if __name__ == '__main__':
     
     os.environ['OAUTHLIB_INSECURE_TRANSPORT'] = '1'
     app.run(debug=True)
 
-    """
-    with app.app_context():
-        db.create_all()
-    """
+  
+   
+"""with app.app_context():
+        db.create_all()    """

@@ -133,6 +133,7 @@
         <div id="results" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"></div>
     </div>
 
+
     <footer class="mt-6 py-4 bg-boxBg text-sm">
         <div class="container mx-auto px-4 flex flex-col items-center">
             <p class="text-center text-gray-400 mb-2">
@@ -290,37 +291,80 @@
     }
 
     function displayResults(items) {
-        const resultsDiv = document.getElementById('results');
-        if (!resultsDiv) {
-            console.error('Results div not found');
-            return;
-        }
-        resultsDiv.innerHTML = '';
-        if (items.length === 0) {
-            resultsDiv.innerHTML = '<div class="col-span-full text-center text-gray-500">No results found.</div>';
-            return;
-        }
-        items.forEach(item => {
-            const videoDiv = document.createElement('div');
-            videoDiv.className = 'bg-white rounded-lg shadow-md overflow-hidden';
-            videoDiv.innerHTML = `
-                <a href="https://www.youtube.com/watch?v=${item.id.videoId}" target="_blank" rel="noopener noreferrer">
-                    <img src="${item.snippet.thumbnails.medium.url}" alt="${item.snippet.title}" class="w-full h-48 object-cover">
-                </a>
-                <div class="p-4">
-                    <h3 class="text-lg font-semibold text-gray-800 mb-2">
-                        <a href="https://www.youtube.com/watch?v=${item.id.videoId}" target="_blank" rel="noopener noreferrer" class="hover:text-blue-600">
-                            ${item.snippet.title}
+                const resultsDiv = document.getElementById('results');
+                if (!resultsDiv) {
+                    console.error('Results div not found');
+                    return;
+                }
+                resultsDiv.innerHTML = '';
+                if (items.length === 0) {
+                    resultsDiv.innerHTML = '<div class="col-span-full text-center text-gray-500">No results found.</div>';
+                    return;
+                }
+
+                const videoIds = items.map(item => item.id.videoId);
+                
+                // First, display the videos
+                items.forEach(item => {
+                    const videoDiv = document.createElement('div');
+                    videoDiv.className = 'bg-white rounded-lg shadow-md overflow-hidden';
+                    videoDiv.innerHTML = `
+                        <a href="https://www.youtube.com/watch?v=${item.id.videoId}" target="_blank" rel="noopener noreferrer">
+                            <img src="${item.snippet.thumbnails.medium.url}" alt="${item.snippet.title}" class="w-full h-48 object-cover">
                         </a>
-                    </h3>
-                    <p class="text-gray-600 text-sm mb-4">${item.snippet.description}</p>
-                    <button onclick="addComment('${item.id.videoId}')" class="bg-secondary text-white px-4 py-2 rounded hover:bg-primary transition duration-300 text-center">Add your comment</button>
-                    <p id="comment-status-${item.id.videoId}" class="mt-2 text-sm text-gray-500"></p>
-                </div>
-            `;
-            resultsDiv.appendChild(videoDiv);
-        });
-    }
+                        <div class="p-4">
+                            <h3 class="text-lg font-semibold text-gray-800 mb-2">
+                                <a href="https://www.youtube.com/watch?v=${item.id.videoId}" target="_blank" rel="noopener noreferrer" class="hover:text-blue-600">
+                                    ${item.snippet.title}
+                                </a>
+                            </h3>
+                            <p class="text-gray-600 text-sm mb-4">${item.snippet.description}</p>
+                            <button onclick="addComment('${item.id.videoId}')" class="bg-secondary text-white px-4 py-2 rounded hover:bg-primary transition duration-300 text-center">Add your comment</button>
+                            <p id="comment-status-${item.id.videoId}" class="mt-2 text-sm text-gray-500"></p>
+                            <div id="summary-${item.id.videoId}" class="mt-4 p-3 bg-gray-100 rounded-lg">
+                                <p class="text-sm text-gray-800 font-semibold">Summary:</p>
+                                <p class="text-sm text-gray-600">Loading summary...</p>
+                            </div>
+                        </div>
+                    `;
+                    resultsDiv.appendChild(videoDiv);
+                });
+
+                // Then, fetch and display the summaries
+                fetchBulkTranscripts(videoIds);
+            }
+
+            function fetchBulkTranscripts(videoIds) {
+                axios.post('/get_bulk_transcripts', { video_ids: videoIds })
+                    .then(function (response) {
+                        for (const [videoId, data] of Object.entries(response.data)) {
+                            const summaryDiv = document.getElementById(`summary-${videoId}`);
+                            if (summaryDiv) {
+                                if (data.summary) {
+                                    summaryDiv.innerHTML = `
+                                        <p class="text-sm text-gray-800 font-semibold">Summary:</p>
+                                        <p class="text-sm text-gray-600">${data.summary}</p>
+                                    `;
+                                } else if (data.error) {
+                                    summaryDiv.innerHTML = `
+                                        <p class="text-sm text-red-500">Error fetching summary: ${data.error}</p>
+                                    `;
+                                }
+                            }
+                        }
+                    })
+                    .catch(function (error) {
+                        console.error('Error fetching bulk transcripts:', error);
+                        videoIds.forEach(videoId => {
+                            const summaryDiv = document.getElementById(`summary-${videoId}`);
+                            if (summaryDiv) {
+                                summaryDiv.innerHTML = `
+                                    <p class="text-sm text-red-500">Error fetching summary. Please try again later.</p>
+                                `;
+                            }
+                        });
+                    });
+            }
 
     window.addComment = function(videoId) {
         const statusElement = document.getElementById(`comment-status-${videoId}`);
