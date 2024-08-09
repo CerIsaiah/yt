@@ -80,6 +80,14 @@ class VideoTranscript(db.Model):
 # OpenAI client
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
+# Define a new model to cache search results
+class SearchCache(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    query = db.Column(db.String(255), unique=True, nullable=False)
+    results = db.Column(db.Text, nullable=False)
+    timestamp = db.Column(db.DateTime, default=datetime.utcnow)
+
+
 class YoutubeApi:
     def __init__(self, credentials):
         self.connection = self.init_connection(credentials)
@@ -88,29 +96,39 @@ class YoutubeApi:
         return build(API_SERVICE_NAME, API_VERSION, credentials=credentials)
 
     def make_search(self, query, max_results=20):
-        try:
-            results = self.connection.search().list(
-                q=query,
-                maxResults=max_results,
-                part="snippet",
-                type="video"
-            ).execute()
+        # Check cache first
+        cached_result = db.session.query(SearchCache).filter(SearchCache.query == query).first()
+        if cached_result and (datetime.utcnow() - cached_result.timestamp).days < 1:
+            results = json.loads(cached_result.results)
+        else:
+            try:
+                results = self.connection.search().list(
+                    q=query,
+                    maxResults=max_results,
+                    part="snippet",
+                    type="video"
+                ).execute()
+                
+                # Cache the results
+                new_cache = SearchCache(query=query, results=json.dumps(results))
+                db.session.add(new_cache)
+                db.session.commit()
+            except HttpError as e:
+                print(f"An error occurred: {e}")
+                return None
 
-            # Filter out videos the user has interacted with
-            user_id = session.get('user_id')
-            interacted_videos = UserInteraction.query.filter_by(user_id=user_id).with_entities(UserInteraction.video_id).all()
-            interacted_video_ids = [video.video_id for video in interacted_videos]
+        # Filter out videos the user has interacted with
+        user_id = session.get('user_id')
+        interacted_videos = db.session.query(UserInteraction.video_id).filter(UserInteraction.user_id == user_id).all()
+        interacted_video_ids = [video.video_id for video in interacted_videos]
 
-            filtered_results = [
-                video for video in results.get('items', [])
-                if video['id']['videoId'] not in interacted_video_ids
-            ]
+        filtered_results = [
+            video for video in results.get('items', [])
+            if video['id']['videoId'] not in interacted_video_ids
+        ]
 
-            results['items'] = filtered_results
-            return results
-        except HttpError as e:
-            print(f"An error occurred: {e}")
-            return None
+        results['items'] = filtered_results
+        return results
 
     def add_comment(self, video_id, comment):
         try:
@@ -138,23 +156,6 @@ class YoutubeApi:
         except HttpError as e:
             print(f"An error occurred: {e}")
             return False
-
-    def get_comment_threads(self, video_id, search):
-        results = self.connection.commentThreads().list(
-            part="snippet",
-            videoId=video_id,
-            textFormat="plainText",
-            searchTerms=search,
-            maxResults=10,
-        ).execute()
-
-        for item in results["items"]:
-            comment = item["snippet"]["topLevelComment"]
-            author = comment["snippet"]["authorDisplayName"]
-            text = comment["snippet"]["textDisplay"]
-            print(author, text)
-
-        return results["items"]
 
 def load_user_comments(user_id):
     if os.path.exists(COMMENTS_FILE):
@@ -444,8 +445,9 @@ def get_bulk_transcripts():
 
     results = {}
     for video_id in video_ids:
-        existing_transcript = VideoTranscript.query.filter_by(video_id=video_id).first()
+        existing_transcript = db.session.query(VideoTranscript).filter(VideoTranscript.video_id == video_id).first()
         if existing_transcript:
+            print("Transcript exists!")
             results[video_id] = {
                 'summary': existing_transcript.summary
             }
@@ -482,7 +484,6 @@ def get_bulk_transcripts():
                 }
 
     return jsonify(results)
-
 
 def apply_migrations():
     from flask_migrate import upgrade
