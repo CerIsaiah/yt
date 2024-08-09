@@ -490,7 +490,7 @@ def apply_migrations():
         upgrade()
 
 if __name__ == '__main__':
-    apply_migrations()
+    #apply_migrations()
     os.environ['OAUTHLIB_INSECURE_TRANSPORT'] = '1'
     app.run(debug=True)
 
