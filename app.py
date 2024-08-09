@@ -18,6 +18,7 @@ from openai import OpenAI
 from flask_migrate import Migrate
 
 
+
 # Load environment variables
 load_dotenv()
 
@@ -483,9 +484,13 @@ def get_bulk_transcripts():
     return jsonify(results)
 
 
+def apply_migrations():
+    from flask_migrate import upgrade
+    with app.app_context():
+        upgrade()
 
 if __name__ == '__main__':
-    
+    apply_migrations()
     os.environ['OAUTHLIB_INSECURE_TRANSPORT'] = '1'
     app.run(debug=True)
 
