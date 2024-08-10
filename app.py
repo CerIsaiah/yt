@@ -97,6 +97,12 @@ class SearchCache(db.Model):
     results = db.Column(db.Text, nullable=False)
     timestamp = db.Column(db.DateTime, default=datetime.utcnow)
 
+class UserComment(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.String(50), nullable=False)
+    comment = db.Column(db.Text, nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
 class YoutubeApi:
     def __init__(self, credentials):
         self.connection = self.init_connection(credentials)
@@ -180,20 +186,33 @@ class YoutubeApi:
             return False
 
 def load_user_comments(user_id):
-    if os.path.exists(COMMENTS_FILE):
-        with open(COMMENTS_FILE, 'r') as file:
-            all_comments = json.load(file)
-            return all_comments.get(user_id, [])
-    return []
+    app.logger.debug(f"Attempting to load comments for user {user_id}")
+    comments = UserComment.query.filter_by(user_id=user_id).all()
+    app.logger.debug(f"Loaded {len(comments)} comments for user {user_id}")
+    return [comment.comment for comment in comments]
 
-def save_user_comments(user_id, comments):
-    all_comments = {}
-    if os.path.exists(COMMENTS_FILE):
-        with open(COMMENTS_FILE, 'r') as file:
-            all_comments = json.load(file)
-    all_comments[user_id] = comments
-    with open(COMMENTS_FILE, 'w') as file:
-        json.dump(all_comments, file)
+def save_user_comment(user_id, comment):
+    app.logger.debug(f"Saving new comment for user {user_id}")
+    new_comment = UserComment(user_id=user_id, comment=comment)
+    db.session.add(new_comment)
+    db.session.commit()
+    app.logger.debug(f"Comment saved successfully for user {user_id}")
+
+@app.route('/debug_db_comments')
+def debug_db_comments():
+    user_id = session.get('user_id')
+    if not user_id:
+        return jsonify({'error': 'User not authenticated'}), 401
+    
+    comments = load_user_comments(user_id)
+    comment_count = UserComment.query.filter_by(user_id=user_id).count()
+    
+    return jsonify({
+        'user_id': user_id,
+        'comments': comments,
+        'comment_count': comment_count,
+        'db_uri': app.config['SQLALCHEMY_DATABASE_URI']
+    })
 
 @app.route('/')
 def index():
@@ -220,43 +239,69 @@ def credentials_to_dict(credentials):
 @app.route('/comment', methods=['POST'])
 @limiter.limit("7 per minute")
 def comment():
+    app.logger.debug("Received comment request")
     youtube_api = get_youtube_api()
     if not youtube_api:
+        app.logger.error("User not authenticated")
         return jsonify({'error': 'Not authenticated. Please authorize first.'}), 401
 
     user_id = session.get('user_id')
     if not user_id:
+        app.logger.error("User ID not found in session")
         return jsonify({'error': 'User not authenticated'}), 401
 
     video_id = request.form.get('video_id')
+    app.logger.debug(f"Received video_id: {video_id}")
     if not video_id:
+        app.logger.error("No video ID provided")
         return jsonify({'error': 'No video ID provided'}), 400
     
-    user_comments = load_user_comments(user_id)
-    if not user_comments:
-        return jsonify({'error': 'You have no comments to send'}), 400
+    # Retrieve the comment, either AI-generated or user-provided
+    random_comment = request.form.get('comment')
+    app.logger.debug(f"Received comment: {random_comment}")
     
-    random_comment = random.choice(user_comments)
+    # Check if the comment is AI-generated
+    if '[AI]' in random_comment:
+        random_comment = random_comment.replace('[AI]', '').strip()
+    else:
+        # Load user-added comments if not AI-generated
+        user_comments = load_user_comments(user_id)
+        if not user_comments:
+            app.logger.error(f"No comments found for user {user_id}")
+            return jsonify({'error': 'You have no comments to send. Please add some comments first.'}), 400
+
+        random_comment = random.choice(user_comments)
+
     try:
+        app.logger.debug(f"Attempting to post comment on video {video_id}")
         success = youtube_api.add_comment(video_id, random_comment)
         if success:
+            app.logger.info(f"Successfully posted comment on video {video_id}")
             return jsonify({'status': 'success', 'comment': random_comment})
         else:
+            app.logger.error(f"Failed to post comment on video {video_id}")
             return jsonify({'error': 'Unable to post comment. Please check video permissions.'}), 403
     except HttpError as e:
+        app.logger.error(f"YouTube API error: {str(e)}")
         if e.resp.status == 401:
             session.clear()
             return jsonify({'error': 'Authentication failed', 'redirect': url_for('authorize')}), 401
         error_message = e.error_details[0]['message'] if e.error_details else str(e)
         return jsonify({'error': f'YouTube API error: {error_message}'}), e.resp.status
+    except Exception as e:
+        app.logger.error(f"Unexpected error in comment route: {str(e)}")
+        return jsonify({'error': 'An unexpected error occurred'}), 500
 
+    
 @app.route('/get_comments', methods=['GET'])
 def get_comments():
     user_id = session.get('user_id')
     if not user_id:
+        app.logger.error("User not authenticated")
         return jsonify({'error': 'User not authenticated'}), 401
     
     user_comments = load_user_comments(user_id)
+    app.logger.info(f"Retrieved {len(user_comments)} comments for user {user_id}")
     return jsonify({'comments': user_comments})
 
 @app.route('/add_comment', methods=['POST'])
@@ -264,35 +309,20 @@ def get_comments():
 def add_comment():
     user_id = session.get('user_id')
     if not user_id:
+        app.logger.error("User not authenticated")
         return jsonify({'error': 'User not authenticated'}), 401
 
     new_comment = request.form.get('new_comment')
     if not new_comment:
+        app.logger.error("No comment provided")
         return jsonify({'error': 'No comment provided'}), 400
 
-    user_comments = load_user_comments(user_id)
-    user_comments.append(new_comment)
-    save_user_comments(user_id, user_comments)
-
+    save_user_comment(user_id, new_comment)
+    
+    app.logger.info(f"Added new comment for user {user_id}")
     return jsonify({'status': 'success', 'comment': new_comment})
 
-@app.route('/remove_comment', methods=['POST'])
-def remove_comment():
-    user_id = session.get('user_id')
-    if not user_id:
-        return jsonify({'error': 'User not authenticated'}), 401
 
-    comment_to_remove = request.form.get('comment')
-    if not comment_to_remove:
-        return jsonify({'error': 'No comment provided'}), 400
-
-    user_comments = load_user_comments(user_id)
-    if comment_to_remove in user_comments:
-        user_comments.remove(comment_to_remove)
-        save_user_comments(user_id, user_comments)
-        return jsonify({'status': 'success'})
-    else:
-        return jsonify({'error': 'Comment not found'}), 404
 
 @app.route('/search', methods=['POST'])
 @limiter.limit("5 per minute")
@@ -555,10 +585,15 @@ def generate_comment():
             ]
         )
         comment = response.choices[0].message.content.strip()
+
+        # Add an identifier to mark it as AI-generated
+        comment = "[AI]" + comment
+
         return jsonify({'status': 'success', 'comment': comment})
     except Exception as e:
         app.logger.error(f"Error in generate_comment: {str(e)}")
         return jsonify({'error': f"Server error: {str(e)}"}), 500
+
 
 
 @app.route('/set_product_info', methods=['POST'])
