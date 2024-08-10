@@ -2,10 +2,12 @@ from flask import Flask, render_template, request, jsonify, session, redirect, u
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 from flask_sqlalchemy import SQLAlchemy
+from flask_migrate import Migrate
 from googleapiclient.discovery import build
 from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import Flow
 from googleapiclient.errors import HttpError
+from openai import OpenAI
 import os
 import json
 import random
@@ -14,17 +16,30 @@ from dotenv import load_dotenv
 from google.auth.transport.requests import Request
 import requests 
 from youtube_transcript_api import YouTubeTranscriptApi
-from openai import OpenAI
-from flask_migrate import Migrate
-
-
 
 # Load environment variables
 load_dotenv()
 
+import logging
+logging.basicConfig(level=logging.DEBUG)
+
+
+
 app = Flask(__name__)
 app.secret_key = os.getenv('FLASK_SECRET_KEY', 'your_secret_key_here')
 app.permanent_session_lifetime = timedelta(days=30)
+
+
+
+# Add this route to help with debugging
+@app.route('/debug_session', methods=['GET'])
+def debug_session():
+    return jsonify({
+        'user_authenticated': 'credentials' in session,
+        'product_info': session.get('product_info'),
+        'session_data': dict(session)
+    })
+
 
 limiter = Limiter(
     get_remote_address,
@@ -43,24 +58,25 @@ CLIENT_CONFIG = {
         "token_uri": "https://oauth2.googleapis.com/token",
         "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
         "client_secret": os.getenv('GOOGLE_CLIENT_SECRET'),
-        "redirect_uris": ["http://localhost:8000/","http://localhost:0/","http://localhost:5000/oauth2callback","http://127.0.0.1:5000/search","http://127.0.0.1:5000/","http://127.0.0.1:5000/oauth2callback"]
+        "redirect_uris": ["http://localhost:5000/oauth2callback, http://127.0.0.1:5000/oauth2callback, https://commentmarketer.com/oauth2callback, http://127.0.0.1:5000/search, https://commentmarketer.com/search"]
     }
 }
 
 # OAuth 2.0 configuration
-SCOPES = ["https://www.googleapis.com/auth/youtube.force-ssl", "https://www.googleapis.com/auth/youtube.readonly", "https://www.googleapis.com/auth/youtube"]
+SCOPES = ["https://www.googleapis.com/auth/youtube.force-ssl"]
 API_SERVICE_NAME = "youtube"
 API_VERSION = "v3"
 
 # Database configuration
-app.config['SQLALCHEMY_DATABASE_URI'] =  os.getenv("DB_STRING")
+app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv("DB_STRING")
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db = SQLAlchemy(app)
 migrate = Migrate(app, db)
 
+# OpenAI client
+client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
-
-# Define UserInteraction model
+# Define models
 class UserInteraction(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.String(50), nullable=False)
@@ -68,7 +84,6 @@ class UserInteraction(db.Model):
     interaction_type = db.Column(db.String(20), nullable=False)
     timestamp = db.Column(db.DateTime, default=datetime.utcnow)
 
-# Define VideoTranscript model
 class VideoTranscript(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     video_id = db.Column(db.String(50), unique=True, nullable=False)
@@ -76,17 +91,11 @@ class VideoTranscript(db.Model):
     summary = db.Column(db.Text)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
-
-# OpenAI client
-client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
-
-# Define a new model to cache search results
 class SearchCache(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     query = db.Column(db.String(255), unique=True, nullable=False)
     results = db.Column(db.Text, nullable=False)
     timestamp = db.Column(db.DateTime, default=datetime.utcnow)
-
 
 class YoutubeApi:
     def __init__(self, credentials):
@@ -95,7 +104,7 @@ class YoutubeApi:
     def init_connection(self, credentials):
         return build(API_SERVICE_NAME, API_VERSION, credentials=credentials)
 
-    def make_search(self, query, max_results=20):
+    def make_search(self, query, max_results=10):
         # Check cache first
         cached_result = db.session.query(SearchCache).filter(SearchCache.query == query).first()
         if cached_result and (datetime.utcnow() - cached_result.timestamp).days < 1:
@@ -122,10 +131,23 @@ class YoutubeApi:
         interacted_videos = db.session.query(UserInteraction.video_id).filter(UserInteraction.user_id == user_id).all()
         interacted_video_ids = [video.video_id for video in interacted_videos]
 
-        filtered_results = [
-            video for video in results.get('items', [])
-            if video['id']['videoId'] not in interacted_video_ids
-        ]
+        filtered_results = []
+        for video in results.get('items', []):
+            video_id = video['id']['videoId']
+            if video_id not in interacted_video_ids:
+                # Check if the video is not a live stream and has comments enabled
+                video_details = self.connection.videos().list(
+                    part="snippet,liveStreamingDetails,statistics",
+                    id=video_id
+                ).execute()
+                
+                if video_details['items']:
+                    item = video_details['items'][0]
+                    is_live = 'liveStreamingDetails' in item
+                    comments_disabled = item['statistics'].get('commentCount') == '0'
+                    
+                    if not is_live and not comments_disabled:
+                        filtered_results.append(video)
 
         results['items'] = filtered_results
         return results
@@ -302,27 +324,30 @@ def authorize():
         scopes=SCOPES,
         redirect_uri=url_for('oauth2callback', _external=True)
     )
-    authorization_url, state = flow.authorization_url(
+    flow.authorization_url(
         access_type='offline',
         include_granted_scopes='true',
         prompt='consent'
     )
+    authorization_url, state = flow.authorization_url()
     session['state'] = state
     return redirect(authorization_url)
 
 @app.route('/oauth2callback')
 def oauth2callback():
+    state = session.get('state')
+    if not state:
+        return redirect(url_for('index'))  # or handle this error appropriately
+
+    flow = Flow.from_client_config(
+        CLIENT_CONFIG,
+        scopes=SCOPES,
+        state=state
+    )
+    flow.redirect_uri = url_for('oauth2callback', _external=True)
+
     try:
-        flow = Flow.from_client_config(
-            CLIENT_CONFIG,
-            scopes=SCOPES,
-            state=session['state']
-        )
-        flow.redirect_uri = url_for('oauth2callback', _external=True)
-
-        authorization_response = request.url
-        flow.fetch_token(authorization_response=authorization_response)
-
+        flow.fetch_token(authorization_response=request.url)
         credentials = flow.credentials
         session['credentials'] = credentials_to_dict(credentials)
         return redirect(url_for('index'))
@@ -391,7 +416,6 @@ def auth_status():
                     return jsonify({'authenticated': False})
             return jsonify({'authenticated': True})
     return jsonify({'authenticated': False})
-
 @app.route('/get_interaction_history')
 def get_interaction_history():
     user_id = session.get('user_id')
@@ -436,6 +460,7 @@ def interaction_history():
     return render_template('interaction_history.html')
 
 
+
 @app.route('/get_bulk_transcripts', methods=['POST'])
 @limiter.limit("2 per minute")
 def get_bulk_transcripts():
@@ -447,7 +472,6 @@ def get_bulk_transcripts():
     for video_id in video_ids:
         existing_transcript = db.session.query(VideoTranscript).filter(VideoTranscript.video_id == video_id).first()
         if existing_transcript:
-            print("Transcript exists!")
             results[video_id] = {
                 'summary': existing_transcript.summary
             }
@@ -459,10 +483,10 @@ def get_bulk_transcripts():
 
                 try:
                     completion = client.chat.completions.create(
-                        model="gpt-4",
+                        model="gpt-4o-mini",
                         messages=[
                             {"role": "system", "content": "You are a helpful assistant. Create a bullet point summary of the following transcript:"},
-                            {"role": "user", "content": f"Create a 2 sentence summary of:\n\n{full_transcript[:4000]}"}
+                            {"role": "user", "content": f"Create a 2 sentence summary of enough for a user to understand something engaging to comment:\n\n{full_transcript[:4000]}"}
                         ]
                     )
                     summary = completion.choices[0].message.content
@@ -485,13 +509,98 @@ def get_bulk_transcripts():
 
     return jsonify(results)
 
+   
+@app.route('/generate_comment', methods=['POST'])
+def generate_comment():
+    youtube_api = get_youtube_api()
+    if not youtube_api:
+        return jsonify({'error': 'Not authenticated. Please authorize first.'}), 401
+
+    video_id = request.form.get('video_id')
+    if not video_id:
+        return jsonify({'error': 'No video ID provided'}), 400
+
+    product_info = session.get('product_info')
+    if not product_info:
+        return jsonify({'error': 'Product information not found. Please provide your product details.'}), 400
+
+    try:
+        video_response = youtube_api.connection.videos().list(
+            part="snippet",
+            id=video_id
+        ).execute()
+
+        if not video_response['items']:
+            return jsonify({'error': 'Video not found'}), 404
+
+        video_title = video_response['items'][0]['snippet']['title']
+        video_description = video_response['items'][0]['snippet']['description']
+
+        prompt = f"""Generate an super short YouTube comment for a video titled '{video_title}' about {video_description}. 
+                     The comment should subtly promote the following product: {product_info}. 
+                     Make sure the comment is relevant to the video content, complements the {video_description} and doesn't come across as spam.
+                     RULES:
+                     NO EMOJIS
+                     NO HASHTAGS
+                     SHORT IS BETTER
+                     ASK QUESTIONS WHILE STILL COMMENTING ON VIDEO DESCRIPTION
+                     ADD AT THE END YOU JUST FINISHED BUILDING A TOOL TO SOLVE the problem of {product_info}
+                     """
+
+        response = client.chat.completions.create(
+            model="gpt-4o",
+            messages=[
+                {"role": "system", "content": "You are a helpful assistant that generates engaging YouTube comments."},
+                {"role": "user", "content": prompt}
+            ]
+        )
+        comment = response.choices[0].message.content.strip()
+        return jsonify({'status': 'success', 'comment': comment})
+    except Exception as e:
+        app.logger.error(f"Error in generate_comment: {str(e)}")
+        return jsonify({'error': f"Server error: {str(e)}"}), 500
+
+
+@app.route('/set_product_info', methods=['POST'])
+def set_product_info():
+    product_info = request.form.get('product_info')
+    if not product_info:
+        return jsonify({'error': 'No product information provided'}), 400
+    session['product_info'] = product_info
+    return jsonify({'status': 'success', 'message': 'Product information saved'})
+
+
+import os
+import shutil
+
+@app.cli.command("reset_db_and_migrations")
+def reset_db_and_migrations():
+    # Drop all tables
+    db.drop_all()
+    print("All tables dropped.")
+
+    # Remove migrations folder
+    migrations_dir = os.path.join(os.path.dirname(__file__), 'migrations')
+    if os.path.exists(migrations_dir):
+        shutil.rmtree(migrations_dir)
+        print("Migrations folder removed.")
+
+    # Initialize migrations
+    os.system('flask db init')
+    print("Migrations reinitialized.")
+
+    # Create tables
+    db.create_all()
+    print("Tables created.")
+
+    # Create and apply initial migration
+    os.system('flask db migrate -m "Initial migration"')
+    os.system('flask db upgrade')
+    print("Initial migration created and applied.")
+
+    print("Database and migrations reset successfully!")
 
 
 if __name__ == '__main__':
-
-    os.environ['OAUTHLIB_INSECURE_TRANSPORT'] = '1'
+    os.environ['OAUTHLIB_INSECURE_TRANSPORT'] = '1' 
     app.run(debug=True)
-
-   
-"""with app.app_context():
-        db.create_all()    """

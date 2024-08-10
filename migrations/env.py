@@ -4,27 +4,16 @@ from logging.config import fileConfig
 from flask import current_app
 
 from alembic import context
-from dotenv import load_dotenv
-import os
-# This is the Alembic Config object
+
+# this is the Alembic Config object, which provides
+# access to the values within the .ini file in use.
 config = context.config
 
-# Interpret the config file for Python logging
+# Interpret the config file for Python logging.
+# This line sets up loggers basically.
 fileConfig(config.config_file_name)
+logger = logging.getLogger('alembic.env')
 
-# Add your model's MetaData object here for 'autogenerate' support
-# from myapp import mymodel
-# target_metadata = mymodel.Base.metadata
-from app import db
-from app import UserInteraction, VideoTranscript
-
-target_metadata = db.Model.metadata
-
-# Load environment variables
-load_dotenv()
-
-# Overwrite the sqlalchemy.url with the one from your Flask app
-config.set_main_option("sqlalchemy.url", os.getenv("DB_STRING"))
 
 def get_engine():
     try:

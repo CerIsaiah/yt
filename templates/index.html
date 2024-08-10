@@ -18,9 +18,6 @@
         })(window,document,'script','dataLayer','GTM-PM3PR5TX');</script>
     <!-- End Google Tag Manager -->
 
-    <script defer data-domain="commentmarketer.com" src="https://plausible.io/js/script.js"></script>
-
-
     <link rel="shortcut icon" href="{{ url_for('static', filename='favicon_microphone.png') }}">
 
     <meta charset="UTF-8">
@@ -138,8 +135,21 @@
         <h2 class="text-xl sm:text-2xl font-semibold mb-4 gradient-text text-center">Search Results</h2>
         <div id="results" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"></div>
     </div>
-
-
+    <div id="productInfoModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full hidden">
+        <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+            <div class="mt-3 text-center">
+                <h3 class="text-lg leading-6 font-medium text-gray-900">Enter Your Product Information</h3>
+                <div class="mt-2 px-7 py-3">
+                    <input id="productInfoInput" type="text" class="w-full px-3 py-2 text-gray-700 border rounded-lg focus:outline-none" placeholder="Describe your product or service">
+                </div>
+                <div class="items-center px-4 py-3">
+                    <button id="saveProductInfo" class="px-4 py-2 bg-blue-500 text-white text-base font-medium rounded-md w-full shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-300">
+                        Save
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
     <footer class="mt-6 py-4 bg-boxBg text-sm">
         <div class="container mx-auto px-4 flex flex-col items-center">
             <p class="text-center text-gray-400 mb-2">
@@ -151,195 +161,299 @@
             </p>
         </div>
     </footer>
-    </body>
-    </html>
+
 
     <script>
         document.addEventListener('DOMContentLoaded', function() {
-    function showError(elementId, message) {
-        const errorElement = document.getElementById(elementId);
-        if (errorElement) {
-            errorElement.textContent = message;
-            errorElement.classList.remove('hidden');
-        }
-    }
+            function showError(elementId, message) {
+                const errorElement = document.getElementById(elementId);
+                if (errorElement) {
+                    errorElement.textContent = message;
+                    errorElement.classList.remove('hidden');
+                }
+            }
+        
+            function hideError(elementId) {
+                const errorElement = document.getElementById(elementId);
+                if (errorElement) {
+                    errorElement.classList.add('hidden');
+                }
+            }
+        
+            // Don't forget to update your loadComments function to number the comments
+                function loadComments() {
+                    axios.get('/get_comments')
+                        .then(function (response) {
+                            const commentList = document.getElementById('commentList');
+                            if (!commentList) {
+                                console.error('Comment list element not found');
+                                return;
+                            }
+                            commentList.innerHTML = '';
+                            response.data.comments.forEach((comment, index) => {
+                                addCommentToList(comment, index + 1);
+                            });
+                        })
+                        .catch(function (error) {
+                            console.error('Error loading comments:', error);
+                        });
+                }
 
-    function hideError(elementId) {
-        const errorElement = document.getElementById(elementId);
-        if (errorElement) {
-            errorElement.classList.add('hidden');
-        }
-    }
-
-    function loadComments() {
-        axios.get('/get_comments')
-            .then(function (response) {
+            // Update addCommentToList to include the comment number
+            function addCommentToList(comment, number) {
                 const commentList = document.getElementById('commentList');
                 if (!commentList) {
                     console.error('Comment list element not found');
                     return;
                 }
-                commentList.innerHTML = '';
-                response.data.comments.forEach(comment => {
-                    addCommentToList(comment);
-                });
-            })
-            .catch(function (error) {
-                console.error('Error loading comments:', error);
-            });
-    }
-
-    function addCommentToList(comment) {
-        const commentList = document.getElementById('commentList');
-        if (!commentList) {
-            console.error('Comment list element not found');
-            return;
-        }
-        const li = document.createElement('li');
-        li.className = 'flex items-center justify-between bg-blue-50 p-2 rounded';
-        li.innerHTML = `
-            <span class="text-gray-800">"${comment}"</span>
-            <button onclick="removeComment('${comment.replace(/'/g, "\\'")}')" class="text-red-500 hover:text-red-700 ml-2">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                    <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd" />
-                </svg>
-            </button>
-        `;
-        commentList.appendChild(li);
-    }
-
-    window.removeComment = function(comment) {
-        axios.post('/remove_comment', `comment=${encodeURIComponent(comment)}`, {
-            headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
-        })
-        .then(function (response) {
-            if (response.data.status === 'success') {
-                loadComments();
-            } else {
-                console.error('Unexpected response:', response.data);
-                alert('An unexpected error occurred. Please try again.');
+                const li = document.createElement('li');
+                li.className = 'flex items-center justify-between bg-blue-50 p-2 rounded';
+                li.innerHTML = `
+                    <span class="text-gray-800">${number}. "${comment}"</span>
+                    <button onclick="removeComment('${comment.replace(/'/g, "\\'")}')" class="text-red-500 hover:text-red-700 ml-2">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                            <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd" />
+                        </svg>
+                    </button>
+                `;
+                commentList.appendChild(li);
             }
-        })
-        .catch(function (error) {
-            console.error('Error:', error);
-            if (error.response) {
-                alert(`Error removing comment: ${error.response.data.error || 'Please try again.'}`);
-            } else {
-                alert('Error removing comment. Please try again.');
-            }
-        });
-    }
-
-    window.addCustomComment = function() {
-        const newCommentInput = document.getElementById('newComment');
-        if (!newCommentInput) {
-            console.error('New comment input not found');
-            return;
-        }
-        const newComment = newCommentInput.value;
-        if (!newComment.trim()) {
-            alert('Please enter a comment');
-            return;
-        }
-        axios.post('/add_comment', `new_comment=${encodeURIComponent(newComment)}`, {
-            headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
-        })
-        .then(function (response) {
-            if (response.data.status === 'success') {
-                newCommentInput.value = '';
-                loadComments();
-            }
-        })
-        .catch(function (error) {
-            console.error('Error:', error);
-            alert('Error adding comment. Please try again.');
-        });
-    }
-
-    window.initiateSearch = function() {
-        const searchQueryInput = document.getElementById('searchQuery');
-        const resultsDiv = document.getElementById('results');
-        if (!searchQueryInput || !resultsDiv) {
-            console.error('Search query input or results div not found');
-            return;
-        }
-        const query = searchQueryInput.value;
-        resultsDiv.innerHTML = '<div class="col-span-full text-center text-gray-500 pulse">Initiating search...</div>';
-        hideError('searchError');
         
-        axios.post('/search', `query=${encodeURIComponent(query)}`, {
-            headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
-        })
-        .then(function (response) {
-            if (response.data.items && Array.isArray(response.data.items)) {
-                displayResults(response.data.items);
-            } else {
-                showError('searchError', 'No results found or unexpected response format.');
-                resultsDiv.innerHTML = '';
+            window.removeComment = function(comment) {
+                axios.post('/remove_comment', `comment=${encodeURIComponent(comment)}`, {
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
+                })
+                .then(function (response) {
+                    if (response.data.status === 'success') {
+                        loadComments();
+                    } else {
+                        console.error('Unexpected response:', response.data);
+                        alert('An unexpected error occurred. Please try again.');
+                    }
+                })
+                .catch(function (error) {
+                    console.error('Error:', error);
+                    if (error.response) {
+                        alert(`Error removing comment: ${error.response.data.error || 'Please try again.'}`);
+                    } else {
+                        alert('Error removing comment. Please try again.');
+                    }
+                });
             }
-        })
-        .catch(function (error) {
-            console.error('Error:', error);
-            resultsDiv.innerHTML = '';
-            if (error.response && error.response.status === 401) {
-                // Redirect to authorization if unauthorized
-                if (error.response.data.redirect) {
-                    window.location.href = error.response.data.redirect;
-                } else {
-                    window.location.href = '/authorize';
+        
+            window.addCustomComment = function() {
+                const newCommentInput = document.getElementById('newComment');
+                if (!newCommentInput) {
+                    console.error('New comment input not found');
+                    return;
                 }
-            } else if (error.response) {
-                showError('searchError', error.response.data.error || 'An error occurred while searching. Please try again.');
-            } else {
-                showError('searchError', 'An error occurred while searching. Please try again.');
+                const newComment = newCommentInput.value;
+                if (!newComment.trim()) {
+                    alert('Please enter a comment');
+                    return;
+                }
+                axios.post('/add_comment', `new_comment=${encodeURIComponent(newComment)}`, {
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
+                })
+                .then(function (response) {
+                    if (response.data.status === 'success') {
+                        newCommentInput.value = '';
+                        loadComments();
+                    }
+                })
+                .catch(function (error) {
+                    console.error('Error:', error);
+                    alert('Error adding comment. Please try again.');
+                });
             }
-        });
+        
+            window.initiateSearch = function() {
+                const searchQueryInput = document.getElementById('searchQuery');
+                const resultsDiv = document.getElementById('results');
+                if (!searchQueryInput || !resultsDiv) {
+                    console.error('Search query input or results div not found');
+                    return;
+                }
+                const query = searchQueryInput.value;
+                resultsDiv.innerHTML = '<div class="col-span-full text-center text-gray-500 pulse">Initiating search...</div>';
+                hideError('searchError');
+                
+                axios.post('/search', `query=${encodeURIComponent(query)}`, {
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
+                })
+                .then(function (response) {
+                    if (response.data.items && Array.isArray(response.data.items)) {
+                        displayResults(response.data.items);
+                    } else {
+                        showError('searchError', 'No results found or unexpected response format.');
+                        resultsDiv.innerHTML = '';
+                    }
+                })
+                .catch(function (error) {
+                    console.error('Error:', error);
+                    resultsDiv.innerHTML = '';
+                    if (error.response && error.response.status === 401) {
+                        // Redirect to authorization if unauthorized
+                        if (error.response.data.redirect) {
+                            window.location.href = error.response.data.redirect;
+                        } else {
+                            window.location.href = '/authorize';
+                        }
+                    } else if (error.response) {
+                        showError('searchError', error.response.data.error || 'An error occurred while searching. Please try again.');
+                    } else {
+                        showError('searchError', 'An error occurred while searching. Please try again.');
+                    }
+                });
+            }
+        
+function displayResults(items) {
+    const resultsDiv = document.getElementById('results');
+    if (!resultsDiv) {
+        console.error('Results div not found');
+        return;
+    }
+    resultsDiv.innerHTML = '';
+    if (items.length === 0) {
+        resultsDiv.innerHTML = '<div class="col-span-full text-center text-gray-500">No results found.</div>';
+        return;
     }
 
-    function displayResults(items) {
-                const resultsDiv = document.getElementById('results');
-                if (!resultsDiv) {
-                    console.error('Results div not found');
-                    return;
-                }
-                resultsDiv.innerHTML = '';
-                if (items.length === 0) {
-                    resultsDiv.innerHTML = '<div class="col-span-full text-center text-gray-500">No results found.</div>';
-                    return;
-                }
+    const videoIds = items.map(item => item.id.videoId);
+    
+    // Display the videos
+    items.forEach((item, index) => {
+        const videoDiv = document.createElement('div');
+        videoDiv.className = 'bg-white rounded-lg shadow-md overflow-hidden';
+        videoDiv.innerHTML = `
+            <a href="https://www.youtube.com/watch?v=${item.id.videoId}" target="_blank" rel="noopener noreferrer">
+                <img src="${item.snippet.thumbnails.medium.url}" alt="${item.snippet.title}" class="w-full h-48 object-cover">
+            </a>
+            <div class="p-4">
+                <h3 class="text-lg font-semibold text-gray-800 mb-2">
+                    <a href="https://www.youtube.com/watch?v=${item.id.videoId}" target="_blank" rel="noopener noreferrer" class="hover:text-blue-600">
+                        ${item.snippet.title}
+                    </a>
+                </h3>
+                <p class="text-gray-600 text-sm mb-4">${item.snippet.description}</p>
+                <button onclick="generateAIComment('${item.id.videoId}')" class="bg-secondary text-white px-4 py-2 rounded hover:bg-primary transition duration-300 text-center mb-2">Generate AI Comment</button>
+                <button onclick="showCustomComments('${item.id.videoId}')" class="bg-primary text-white px-4 py-2 rounded hover:bg-secondary transition duration-300 text-center mb-2 ml-2">Use Custom Comment</button>
+                <div id="comment-options-${item.id.videoId}" class="mt-2 hidden">
+                    <select id="comment-select-${item.id.videoId}" class="w-full p-2 rounded border border-gray-300 mb-2">
+                        <option value="">Select a comment</option>
+                    </select>
+                    <button onclick="postSelectedComment('${item.id.videoId}')" class="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600 transition duration-300 text-center">Post Selected Comment</button>
+                </div>
+                <p id="comment-status-${item.id.videoId}" class="mt-2 text-sm text-gray-500"></p>
+                <div id="summary-${item.id.videoId}" class="mt-4 p-3 bg-gray-100 rounded-lg">
+                    <p class="text-sm text-gray-800 font-semibold">Summary:</p>
+                    <p class="text-sm text-gray-600">Loading summary...</p>
+                </div>
+            </div>
+        `;
+        resultsDiv.appendChild(videoDiv);
+    });
 
-                const videoIds = items.map(item => item.id.videoId);
-                
-                // First, display the videos
-                items.forEach(item => {
-                    const videoDiv = document.createElement('div');
-                    videoDiv.className = 'bg-white rounded-lg shadow-md overflow-hidden';
-                    videoDiv.innerHTML = `
-                        <a href="https://www.youtube.com/watch?v=${item.id.videoId}" target="_blank" rel="noopener noreferrer">
-                            <img src="${item.snippet.thumbnails.medium.url}" alt="${item.snippet.title}" class="w-full h-48 object-cover">
-                        </a>
-                        <div class="p-4">
-                            <h3 class="text-lg font-semibold text-gray-800 mb-2">
-                                <a href="https://www.youtube.com/watch?v=${item.id.videoId}" target="_blank" rel="noopener noreferrer" class="hover:text-blue-600">
-                                    ${item.snippet.title}
-                                </a>
-                            </h3>
-                            <p class="text-gray-600 text-sm mb-4">${item.snippet.description}</p>
-                            <button onclick="addComment('${item.id.videoId}')" class="bg-secondary text-white px-4 py-2 rounded hover:bg-primary transition duration-300 text-center">Add your comment</button>
-                            <p id="comment-status-${item.id.videoId}" class="mt-2 text-sm text-gray-500"></p>
-                            <div id="summary-${item.id.videoId}" class="mt-4 p-3 bg-gray-100 rounded-lg">
-                                <p class="text-sm text-gray-800 font-semibold">Summary:</p>
-                                <p class="text-sm text-gray-600">Loading summary...</p>
-                            </div>
-                        </div>
-                    `;
-                    resultsDiv.appendChild(videoDiv);
-                });
+    // Fetch and display the summaries
+    fetchBulkTranscripts(videoIds);
+}
 
-                // Then, fetch and display the summaries
-                fetchBulkTranscripts(videoIds);
-            }
 
+
+ // Make these functions global
+window.showCustomComments = function(videoId) {
+    const commentOptionsDiv = document.getElementById(`comment-options-${videoId}`);
+    const commentSelect = document.getElementById(`comment-select-${videoId}`);
+    commentOptionsDiv.classList.remove('hidden');
+
+    axios.get('/get_comments')
+        .then(function (response) {
+            commentSelect.innerHTML = '<option value="">Select a comment</option>';
+            response.data.comments.forEach((comment, index) => {
+                commentSelect.innerHTML += `<option value="${index}">${index + 1}: ${comment}</option>`;
+            });
+        })
+        .catch(function (error) {
+            console.error('Error loading comments:', error);
+            commentSelect.innerHTML = '<option value="">Error loading comments</option>';
+        });
+}
+
+window.generateAIComment = function(videoId) {
+    const statusElement = document.getElementById(`comment-status-${videoId}`);
+    statusElement.textContent = 'Generating AI comment...';
+    statusElement.className = 'mt-2 text-sm text-blue-500 pulse';
+
+    axios.post('/generate_comment', `video_id=${videoId}`, {
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
+    })
+    .then(function (response) {
+        if (response.data.status === 'success') {
+            const commentOptionsDiv = document.getElementById(`comment-options-${videoId}`);
+            const commentSelect = document.getElementById(`comment-select-${videoId}`);
+            commentSelect.innerHTML = `<option value="ai">AI: ${response.data.comment}</option>`;
+            commentOptionsDiv.classList.remove('hidden');
+            
+            // Add an editable textarea for the AI comment
+            const aiCommentTextarea = document.createElement('textarea');
+            aiCommentTextarea.id = `ai-comment-${videoId}`;
+            aiCommentTextarea.className = 'w-full p-2 rounded border border-gray-300 mb-2';
+            aiCommentTextarea.value = response.data.comment;
+            commentOptionsDiv.insertBefore(aiCommentTextarea, commentSelect);
+
+            statusElement.textContent = 'AI comment generated. You can edit and post it.';
+            statusElement.className = 'mt-2 text-sm text-green-500';
+        }
+    })
+    .catch(function (error) {
+        console.error('Error:', error);
+        statusElement.textContent = 'Error generating AI comment. Please try again.';
+        statusElement.className = 'mt-2 text-sm text-red-500';
+    });
+}
+
+window.postSelectedComment = function(videoId) {
+    const commentSelect = document.getElementById(`comment-select-${videoId}`);
+    const selectedOption = commentSelect.options[commentSelect.selectedIndex];
+    const statusElement = document.getElementById(`comment-status-${videoId}`);
+    const aiCommentTextarea = document.getElementById(`ai-comment-${videoId}`);
+
+    let comment;
+    if (selectedOption.value === 'ai' && aiCommentTextarea) {
+        comment = aiCommentTextarea.value;
+    } else if (!selectedOption.value) {
+        statusElement.textContent = 'Please select a comment to post.';
+        statusElement.className = 'mt-2 text-sm text-red-500';
+        return;
+    } else {
+        comment = selectedOption.text.substring(selectedOption.text.indexOf(':') + 2); // Remove number prefix
+    }
+
+    statusElement.textContent = 'Posting comment...';
+    statusElement.className = 'mt-2 text-sm text-blue-500 pulse';
+
+    axios.post('/comment', `video_id=${videoId}&comment=${encodeURIComponent(comment)}`, {
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
+    })
+    .then(function (response) {
+        if (response.data.status === 'success') {
+            statusElement.textContent = 'Comment posted successfully!';
+            statusElement.className = 'mt-2 text-sm text-green-500';
+        }
+    })
+    .catch(function (error) {
+        console.error('Error:', error);
+        statusElement.textContent = 'Error posting comment. Please try again.';
+        statusElement.className = 'mt-2 text-sm text-red-500';
+    });
+}
+
+// Update the existing addComment function to use the new postSelectedComment
+window.addComment = function(videoId) {
+    showCustomComments(videoId);
+}
+
+        
             function fetchBulkTranscripts(videoIds) {
                 axios.post('/get_bulk_transcripts', { video_ids: videoIds })
                     .then(function (response) {
@@ -371,56 +485,57 @@
                         });
                     });
             }
-
-    window.addComment = function(videoId) {
-        const statusElement = document.getElementById(`comment-status-${videoId}`);
-        if (!statusElement) {
-            console.error(`Comment status element not found for video ${videoId}`);
-            return;
-        }
-        statusElement.textContent = 'Adding comment...';
-        statusElement.className = 'mt-2 text-sm text-blue-500 pulse';
         
-        axios.post('/comment', `video_id=${videoId}`, {
-            headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
-        })
-        .then(function (response) {
-            if (response.data.status === 'success') {
-                statusElement.textContent = `Comment added: "${response.data.comment}"`;
-                statusElement.className = 'mt-2 text-sm text-green-500';
+            window.addComment = function(videoId) {
+                const statusElement = document.getElementById(`comment-status-${videoId}`);
+                if (!statusElement) {
+                    console.error(`Comment status element not found for video ${videoId}`);
+                    return;
+                }
+                statusElement.textContent = 'Adding comment...';
+                statusElement.className = 'mt-2 text-sm text-blue-500 pulse';
+                
+                axios.post('/comment', `video_id=${videoId}`, {
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
+                })
+                .then(function (response) {
+                    if (response.data.status === 'success') {
+                        statusElement.textContent = `Comment added: "${response.data.comment}"`;
+                        statusElement.className = 'mt-2 text-sm text-green-500';
+                    }
+                }).catch(function (error) {
+                    console.error('Error:', error);
+                    if (error.response && error.response.status === 429) {
+                        statusElement.textContent = 'Rate limit exceeded. Please try again later.';
+                    } else if (error.response) {
+                        statusElement.textContent = error.response.data.error || 'Error adding comment. Please try again.';
+                    } else {
+                        statusElement.textContent = 'Error adding comment. Please try again.';
+                    }
+                    statusElement.className = 'mt-2 text-sm text-red-500';
+                });
             }
-        }).catch(function (error) {
-            console.error('Error:', error);
-            if (error.response && error.response.status === 429) {
-                statusElement.textContent = 'Rate limit exceeded. Please try again later.';
-            } else if (error.response) {
-                statusElement.textContent = error.response.data.error || 'Error adding comment. Please try again.';
-            } else {
-                statusElement.textContent = 'Error adding comment. Please try again.';
+        
+            function signOut() {
+                axios.post('/sign_out')
+                    .then(function () {
+                        updateSearchButton(false);
+                        showError('searchError', 'You have been signed out. Please sign in again.');
+                    })
+                    .catch(function (error) {
+                        console.error('Error signing out:', error);
+                        showError('searchError', 'An error occurred while signing out. Please try again.');
+                    });
             }
-            statusElement.className = 'mt-2 text-sm text-red-500';
-        });
-    }
-
-
-
-    function signOut() {
-        axios.post('/sign_out')
-            .then(function () {
-                updateSearchButton(false);
-                showError('searchError', 'You have been signed out. Please sign in again.');
-            })
-            .catch(function (error) {
-                console.error('Error signing out:', error);
-                showError('searchError', 'An error occurred while signing out. Please try again.');
-            });
-    }
-
+        
+             // Modify your existing checkAuthStatus function
     function checkAuthStatus() {
         axios.get('/auth_status')
             .then(function (response) {
-                updateSearchButton(response.data.authenticated);
-                updateSignOutButton(response.data.authenticated);
+                const isAuthenticated = response.data.authenticated;
+                updateSearchButton(isAuthenticated);
+                updateSignOutButton(isAuthenticated);
+                onAuthStatusChecked(isAuthenticated);
             })
             .catch(function (error) {
                 console.error('Error checking auth status:', error);
@@ -429,71 +544,112 @@
             });
     }
 
-    function updateSearchButton(authenticated) {
-        const searchButton = document.getElementById('searchButton');
-        if (searchButton) {
-            if (authenticated) {
-                searchButton.textContent = 'Search';
-                searchButton.onclick = initiateSearch;
-            } else {
-                searchButton.textContent = 'Sign in with Google';
-                searchButton.onclick = handleSearch;
-            }
-        } else {
-            console.error('Search button not found');
-        }
-    }
-
-
-    
-    window.handleSearch = function() {
-        axios.get('/auth_status')
-            .then(function (response) {
-                if (response.data.authenticated) {
-                    initiateSearch();
-                } else {
-                    window.location.href = '/authorize';
+    function checkProductInfo() {
+        axios.get('/debug_session')
+            .then(function(response) {
+                if (response.data.user_authenticated && !response.data.product_info) {
+                    showProductInfoModal();
                 }
             })
-            .catch(function (error) {
-                console.error('Error checking auth status:', error);
-                window.location.href = '/authorize';
+            .catch(function(error) {
+                console.error('Error checking product info:', error);
             });
     }
-    window.signOut = function() {
-        axios.post('/sign_out')
-            .then(function () {
-                updateSearchButton(false);
-                updateSignOutButton(false);
-                showError('searchError', 'You have been signed out. Please sign in again.');
-                // Reload the page to ensure a clean state
-                window.location.reload();
+
+    function showProductInfoModal() {
+        document.getElementById('productInfoModal').classList.remove('hidden');
+    }
+
+    document.getElementById('saveProductInfo').addEventListener('click', function() {
+        const productInfo = document.getElementById('productInfoInput').value;
+        if (productInfo) {
+            axios.post('/set_product_info', `product_info=${encodeURIComponent(productInfo)}`, {
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
             })
-            .catch(function (error) {
-                console.error('Error signing out:', error);
-                showError('searchError', 'An error occurred while signing out. Please try again.');
+            .then(function(response) {
+                if (response.data.status === 'success') {
+                    document.getElementById('productInfoModal').classList.add('hidden');
+                    alert('Product information saved successfully!');
+                }
+            })
+            .catch(function(error) {
+                console.error('Error saving product info:', error);
+                alert('Error saving product information. Please try again.');
             });
-    }
-    function updateSignOutButton(authenticated) {
-        const signOutButton = document.getElementById('signOutButton');
-        if (signOutButton) {
-            if (authenticated) {
-                signOutButton.classList.remove('hidden');
-            } else {
-                signOutButton.classList.add('hidden');
-            }
         } else {
-            console.error('Sign out button not found');
+            alert('Please enter your product information.');
+        }
+    });
+
+    // Call this function after checking auth status
+    function onAuthStatusChecked(isAuthenticated) {
+        if (isAuthenticated) {
+            checkProductInfo();
         }
     }
-
-    // Load comments when the page loads
-    checkAuthStatus();
-    loadComments();
-});
-
-
-    
-    </script>
-</body>
-</html>
+        
+            function updateSearchButton(authenticated) {
+                const searchButton = document.getElementById('searchButton');
+                if (searchButton) {
+                    if (authenticated) {
+                        searchButton.textContent = 'Search';
+                        searchButton.onclick = initiateSearch;
+                    } else {
+                        searchButton.textContent = 'Sign in with Google';
+                        searchButton.onclick = handleSearch;
+                    }
+                } else {
+                    console.error('Search button not found');
+                }
+            }
+        
+            window.handleSearch = function() {
+                axios.get('/auth_status')
+                    .then(function (response) {
+                        if (response.data.authenticated) {
+                            initiateSearch();
+                        } else {
+                            window.location.href = '/authorize';
+                        }
+                    })
+                    .catch(function (error) {
+                        console.error('Error checking auth status:', error);
+                        window.location.href = '/authorize';
+                    });
+            }
+            
+            window.signOut = function() {
+                axios.post('/sign_out')
+                    .then(function () {
+                        updateSearchButton(false);
+                        updateSignOutButton(false);
+                        showError('searchError', 'You have been signed out. Please sign in again.');
+                        // Reload the page to ensure a clean state
+                        window.location.reload();
+                    })
+                    .catch(function (error) {
+                        console.error('Error signing out:', error);
+                        showError('searchError', 'An error occurred while signing out. Please try again.');
+                    });
+            }
+            
+            function updateSignOutButton(authenticated) {
+                const signOutButton = document.getElementById('signOutButton');
+                if (signOutButton) {
+                    if (authenticated) {
+                        signOutButton.classList.remove('hidden');
+                    } else {
+                        signOutButton.classList.add('hidden');
+                    }
+                } else {
+                    console.error('Sign out button not found');
+                }
+            }
+        
+            // Load comments when the page loads
+            checkAuthStatus();
+            loadComments();
+        });
+        </script>
+        </body>
+        </html>
